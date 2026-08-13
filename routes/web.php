@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\MovieController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ShowtimeController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,3 +34,20 @@ Route::post('/showtimes', [ShowtimeController::class, 'store'])->name('showtimes
 Route::get('/showtimes/{showtime}', [ShowtimeController::class, 'show'])->name('showtimes.show');
 Route::put('/showtimes/{showtime}', [ShowtimeController::class, 'update'])->name('showtimes.update');
 Route::delete('/showtimes/{showtime}', [ShowtimeController::class, 'destroy'])->name('showtimes.destroy');
+
+// ===== Authentication =====
+// สำหรับผู้ที่ยังไม่ล็อกอิน
+Route::middleware('guest')->group(function () {
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login']);
+});
+
+// สำหรับผู้ที่ล็อกอินแล้ว
+Route::middleware('auth')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+});
