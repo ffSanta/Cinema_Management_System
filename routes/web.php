@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\MovieController;
+use App\Http\Controllers\ShowtimeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -23,3 +24,11 @@ Route::post('/cinemas', [CinemaController::class, 'store'])->name('cinemas.store
 Route::get('/cinemas/{cinema}', [CinemaController::class, 'show'])->name('cinemas.show');
 Route::put('/cinemas/{cinema}', [CinemaController::class, 'update'])->name('cinemas.update');
 Route::delete('/cinemas/{cinema}', [CinemaController::class, 'destroy'])->name('cinemas.destroy');
+
+// Showtimes Management
+Route::get('/showtimes/data', [ShowtimeController::class, 'data'])->name('showtimes.data');
+Route::get('/showtimes', [ShowtimeController::class, 'index'])->name('showtimes.index');
+Route::post('/showtimes', [ShowtimeController::class, 'store'])->name('showtimes.store');
+Route::get('/showtimes/{showtime}', [ShowtimeController::class, 'show'])->name('showtimes.show');
+Route::put('/showtimes/{showtime}', [ShowtimeController::class, 'update'])->name('showtimes.update');
+Route::delete('/showtimes/{showtime}', [ShowtimeController::class, 'destroy'])->name('showtimes.destroy');
