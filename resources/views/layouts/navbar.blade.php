@@ -18,8 +18,22 @@
                     </a>
                 </li>
 
-                {{-- เมนูจัดการ (เฉพาะ admin) --}}
+                {{-- เมนูฝั่งผู้ใช้ (เฉพาะ user — admin ไม่เห็น/จองไม่ได้) --}}
                 @auth
+                    @if (auth()->user()->role === 'user')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('booking*') ? 'active' : '' }}" href="{{ route('booking.index') }}">
+                                <i class="bi bi-ticket-perforated"></i> จองตั๋ว
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('my-bookings') ? 'active' : '' }}" href="{{ route('booking.my') }}">
+                                <i class="bi bi-journal-check"></i> การจองของฉัน
+                            </a>
+                        </li>
+                    @endif
+
+                    {{-- เมนูจัดการ (เฉพาะ admin) --}}
                     @if (auth()->user()->role === 'admin')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('movies*') ? 'active' : '' }}" href="{{ url('/movies') }}">
