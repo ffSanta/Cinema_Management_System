@@ -17,26 +17,68 @@
                         <i class="bi bi-house-door"></i> หน้าหลัก
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->is('movies*') ? 'active' : '' }}" href="{{ url('/movies') }}">
-                        <i class="bi bi-camera-reels"></i> ภาพยนตร์
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->is('cinemas*') ? 'active' : '' }}" href="{{ url('/cinemas') }}">
-                        <i class="bi bi-building"></i> โรงภาพยนตร์
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->is('showtimes*') ? 'active' : '' }}" href="{{ url('/showtimes') }}">
-                        <i class="bi bi-clock"></i> รอบฉาย
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->is('bookings*') ? 'active' : '' }}" href="{{ url('/bookings') }}">
-                        <i class="bi bi-ticket-perforated"></i> การจอง
-                    </a>
-                </li>
+
+                {{-- เมนูจัดการ (เฉพาะ admin) --}}
+                @auth
+                    @if (auth()->user()->role === 'admin')
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('movies*') ? 'active' : '' }}" href="{{ url('/movies') }}">
+                                <i class="bi bi-camera-reels"></i> ภาพยนตร์
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('cinemas*') ? 'active' : '' }}" href="{{ url('/cinemas') }}">
+                                <i class="bi bi-building"></i> โรงภาพยนตร์
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('showtimes*') ? 'active' : '' }}" href="{{ url('/showtimes') }}">
+                                <i class="bi bi-clock"></i> รอบฉาย
+                            </a>
+                        </li>
+                    @endif
+                @endauth
+            </ul>
+
+            {{-- ส่วนบัญชีผู้ใช้ (ขวา) --}}
+            <ul class="navbar-nav ms-auto">
+                @guest
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('login') ? 'active' : '' }}" href="{{ route('login') }}">
+                            <i class="bi bi-box-arrow-in-right"></i> เข้าสู่ระบบ
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->is('register') ? 'active' : '' }}" href="{{ route('register') }}">
+                            <i class="bi bi-person-plus"></i> สมัครสมาชิก
+                        </a>
+                    </li>
+                @endguest
+
+                @auth
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle"></i> {{ auth()->user()->name }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="{{ route('profile.edit') }}">
+                                    <i class="bi bi-person"></i> ข้อมูลส่วนตัว
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bi bi-box-arrow-right"></i> ออกจากระบบ
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                @endauth
             </ul>
         </div>
     </div>
