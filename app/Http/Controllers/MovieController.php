@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Movie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class MovieController extends Controller
 {
@@ -40,9 +41,14 @@ class MovieController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $this->validateMovie($request);
+        $data = $this->validatedData($request);
 
-        $movie = Movie::create($validated);
+        // อัปโหลดโปสเตอร์ (ถ้ามี) เก็บใน storage/app/public/posters
+        if ($request->hasFile('poster_image')) {
+            $data['poster_image'] = $request->file('poster_image')->store('posters', 'public');
+        }
+
+        $movie = Movie::create($data);
 
         return response()->json([
             'message' => 'เพิ่มภาพยนตร์เรียบร้อยแล้ว',
@@ -55,7 +61,14 @@ class MovieController extends Controller
      */
     public function show(Movie $movie): JsonResponse
     {
-        return response()->json($movie);
+        return response()->json([
+            'id' => $movie->id,
+            'title' => $movie->title,
+            'duration_mins' => $movie->duration_mins,
+            'synopsis' => $movie->synopsis,
+            'poster_url' => $movie->poster_url,
+            'has_poster' => (bool) $movie->poster_image,
+        ]);
     }
 
     /**
@@ -63,9 +76,17 @@ class MovieController extends Controller
      */
     public function update(Request $request, Movie $movie): JsonResponse
     {
-        $validated = $this->validateMovie($request);
+        $data = $this->validatedData($request);
 
-        $movie->update($validated);
+        // ถ้าอัปโหลดรูปใหม่: ลบรูปเก่าทิ้งก่อน แล้วเก็บรูปใหม่
+        if ($request->hasFile('poster_image')) {
+            if ($movie->poster_image) {
+                Storage::disk('public')->delete($movie->poster_image);
+            }
+            $data['poster_image'] = $request->file('poster_image')->store('posters', 'public');
+        }
+
+        $movie->update($data);
 
         return response()->json([
             'message' => 'แก้ไขภาพยนตร์เรียบร้อยแล้ว',
@@ -75,6 +96,8 @@ class MovieController extends Controller
 
     /**
      * ลบภาพยนตร์แบบ Soft Delete (ผ่าน AJAX)
+     * หมายเหตุ: ไม่ลบไฟล์โปสเตอร์ เพราะ soft delete เก็บ record ไว้ให้กู้คืนได้
+     * (ไฟล์จะถูกลบจริงตอน force delete เท่านั้น)
      */
     public function destroy(Movie $movie): JsonResponse
     {
@@ -86,20 +109,29 @@ class MovieController extends Controller
     }
 
     /**
-     * กฎ validation ใช้ร่วมกันทั้ง store และ update
+     * validate + คืนเฉพาะข้อมูล text (ไม่รวมไฟล์ จัดการไฟล์แยกใน store/update)
      */
-    private function validateMovie(Request $request): array
+    private function validatedData(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'title' => ['required', 'string', 'max:20'],
             'duration_mins' => ['required', 'integer', 'min:1', 'max:1000'],
             'synopsis' => ['required', 'string', 'max:60'],
+            'poster_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ], [
             'title.required' => 'กรุณากรอกชื่อเรื่อง',
+            'title.max' => 'ชื่อเรื่องต้องไม่เกิน 20 ตัวอักษร',
             'duration_mins.required' => 'กรุณากรอกความยาว',
             'duration_mins.integer' => 'ความยาวต้องเป็นตัวเลข',
             'duration_mins.min' => 'ความยาวต้องมากกว่า 0 นาที',
             'synopsis.required' => 'กรุณากรอกเรื่องย่อ',
+            'synopsis.max' => 'เรื่องย่อต้องไม่เกิน 60 ตัวอักษร',
+            'poster_image.image' => 'ไฟล์ต้องเป็นรูปภาพเท่านั้น',
+            'poster_image.mimes' => 'รองรับเฉพาะไฟล์ jpg, png, webp',
+            'poster_image.max' => 'ขนาดรูปต้องไม่เกิน 2 MB',
         ]);
+
+        // คืนเฉพาะ field ข้อความ (poster_image เป็นไฟล์ จัดการแยก)
+        return array_intersect_key($validated, array_flip(['title', 'duration_mins', 'synopsis']));
     }
 }

@@ -16,6 +16,22 @@
     #moviesTable {
         table-layout: auto;
     }
+
+    /* แถวย่อย (child row) ตอนจอ < 768px ก็ต้องตัดบรรทัดข้อความยาวไม่มีเว้นวรรคด้วย
+       ไม่งั้น เช่น "dddd...60ตัว" จะดันแถวย่อยกว้างล้นจอ */
+    #moviesTable ul.dtr-details {
+        width: 100%;
+        margin: 0;
+    }
+    #moviesTable ul.dtr-details > li {
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+    #moviesTable .dtr-data {
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
 </style>
 @endpush
 
@@ -74,6 +90,20 @@
                             <label for="synopsis" class="form-label">เรื่องย่อ <span class="text-danger">*</span></label>
                             <textarea class="form-control" id="synopsis" name="synopsis" rows="4"></textarea>
                             <div class="invalid-feedback" data-field="synopsis"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="poster_image" class="form-label">
+                                โปสเตอร์ <small class="text-muted">(jpg/png/webp, ไม่เกิน 2MB)</small>
+                            </label>
+                            <input type="file" class="form-control" id="poster_image" name="poster_image"
+                                   accept="image/jpeg,image/png,image/webp">
+                            <div class="invalid-feedback" data-field="poster_image"></div>
+                            {{-- พรีวิวรูป (รูปเดิมตอนแก้ไข หรือรูปที่เพิ่งเลือก) --}}
+                            <div class="mt-2">
+                                <img id="posterPreview" src="" alt="พรีวิวโปสเตอร์"
+                                     class="img-thumbnail d-none" style="max-height:180px; max-width:100%;">
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -211,6 +241,7 @@
             clearErrors();
             $('#movieForm')[0].reset();
             $('#movie_id').val('');
+            $('#posterPreview').addClass('d-none').attr('src', ''); // ล้างพรีวิว
             $('#movieModalLabel').text('เพิ่มภาพยนตร์');
             movieModal.show();
         });
@@ -224,11 +255,26 @@
                 $('#title').val(movie.title);
                 $('#duration_mins').val(movie.duration_mins);
                 $('#synopsis').val(movie.synopsis);
+                $('#poster_image').val(''); // ล้างไฟล์ที่อาจค้างไว้
+                // โชว์โปสเตอร์เดิม (ถ้ามี)
+                if (movie.has_poster) {
+                    $('#posterPreview').attr('src', movie.poster_url).removeClass('d-none');
+                } else {
+                    $('#posterPreview').addClass('d-none').attr('src', '');
+                }
                 $('#movieModalLabel').text('แก้ไขภาพยนตร์');
                 movieModal.show();
             }).fail(function () {
                 showToast('ไม่พบข้อมูลภาพยนตร์', true);
             });
+        });
+
+        // ===== พรีวิวรูปตอนเลือกไฟล์ =====
+        $('#poster_image').on('change', function () {
+            const file = this.files[0];
+            if (file) {
+                $('#posterPreview').attr('src', URL.createObjectURL(file)).removeClass('d-none');
+            }
         });
 
         // ===== บันทึก (เพิ่ม/แก้ไข) ผ่าน AJAX =====
@@ -238,21 +284,32 @@
 
             const id = $('#movie_id').val();
             const isEdit = !!id;
-            const url = isEdit ? '/movies/' + id : '/movies';
-            const method = isEdit ? 'PUT' : 'POST';
 
-            const data = {
-                title: $('#title').val(),
-                duration_mins: $('#duration_mins').val(),
-                synopsis: $('#synopsis').val(),
-            };
+            // ใช้ FormData เพื่อส่งไฟล์รูปไปด้วย
+            const formData = new FormData();
+            formData.append('title', $('#title').val());
+            formData.append('duration_mins', $('#duration_mins').val());
+            formData.append('synopsis', $('#synopsis').val());
+
+            const fileInput = $('#poster_image')[0];
+            if (fileInput.files.length > 0) {
+                formData.append('poster_image', fileInput.files[0]);
+            }
+
+            let url = '/movies';
+            if (isEdit) {
+                url = '/movies/' + id;
+                formData.append('_method', 'PUT'); // spoof PUT (multipart ส่ง PUT ตรงๆ ไม่ได้)
+            }
 
             $('#btnSave').prop('disabled', true);
 
             $.ajax({
                 url: url,
-                method: method,
-                data: data,
+                method: 'POST',
+                data: formData,
+                processData: false, // อย่าแปลง FormData เป็น query string
+                contentType: false, // ให้ browser ตั้ง multipart boundary เอง
             }).done(function (res) {
                 movieModal.hide();
                 table.ajax.reload(null, false); // reload ตารางโดยไม่รีเซ็ตหน้า
