@@ -54,13 +54,15 @@
                 <i class="bi bi-person-check"></i>
                 สวัสดีคุณ <strong>{{ auth()->user()->name }}</strong> ยินดีต้อนรับเข้าสู่ระบบ
             </div>
-            <div class="card shadow-sm">
-                <div class="card-body text-center py-5">
-                    <i class="bi bi-ticket-perforated fs-1 text-danger"></i>
-                    <h5 class="mt-3">การจองตั๋วภาพยนตร์</h5>
-                    <p class="text-muted">ระบบจองตั๋วกำลังพัฒนา เร็วๆ นี้</p>
+            <a href="{{ url('/booking') }}" class="text-decoration-none">
+                <div class="card shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-ticket-perforated fs-1 text-danger"></i>
+                        <h5 class="mt-3">การจองตั๋วภาพยนตร์</h5>
+                        <p class="text-muted">ระบบจองตั๋วกำลังพัฒนา เร็วๆ นี้</p>
+                    </div>
                 </div>
-            </div>
+            </a>
         @endif
     @endauth
 

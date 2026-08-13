@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\MovieController;
 use App\Http\Controllers\ProfileController;
@@ -53,4 +54,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+});
+
+// ===== Booking (เลือกรอบฉาย + จองที่นั่ง) — เฉพาะสมาชิก user, admin เข้าไม่ได้ =====
+Route::middleware(['auth', 'user'])->group(function () {
+    Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
+    Route::get('/my-bookings', [BookingController::class, 'myBookings'])->name('booking.my');
+    Route::get('/booking/{showtime}/seats', [BookingController::class, 'selectSeats'])->name('booking.seats');
+    Route::post('/booking/{showtime}', [BookingController::class, 'store'])->name('booking.store');
 });
