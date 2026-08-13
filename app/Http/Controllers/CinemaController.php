@@ -3,63 +3,101 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cinema;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CinemaController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * แสดงหน้ารายการโรงภาพยนตร์ (โครง DataTables)
      */
     public function index()
     {
-        //
+        return view('cinemas.index');
     }
 
     /**
-     * Show the form for creating a new resource.
+     * ส่งข้อมูลโรงภาพยนตร์เป็น JSON ให้ DataTables ผ่าน AJAX
      */
-    public function create()
+    public function data(Request $request): JsonResponse
     {
-        //
+        $cinemas = Cinema::latest()->get()->map(function (Cinema $cinema) {
+            return [
+                'id' => $cinema->id,
+                'name' => $cinema->name,
+                'total_seats' => $cinema->total_seats,
+                'created_at' => $cinema->created_at->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json(['data' => $cinemas]);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * บันทึกโรงภาพยนตร์ใหม่ (ผ่าน AJAX)
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        //
+        $data = $this->validateCinema($request);
+
+        $cinema = Cinema::create($data);
+
+        return response()->json([
+            'message' => 'เพิ่มโรงภาพยนตร์เรียบร้อยแล้ว',
+            'cinema' => $cinema,
+        ], 201);
     }
 
     /**
-     * Display the specified resource.
+     * ส่งข้อมูลโรงภาพยนตร์ 1 แห่ง (ไว้เติมในฟอร์มแก้ไข)
      */
-    public function show(Cinema $cinema)
+    public function show(Cinema $cinema): JsonResponse
     {
-        //
+        return response()->json($cinema);
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * อัปเดตโรงภาพยนตร์ (ผ่าน AJAX)
      */
-    public function edit(Cinema $cinema)
+    public function update(Request $request, Cinema $cinema): JsonResponse
     {
-        //
+        $data = $this->validateCinema($request);
+
+        $cinema->update($data);
+
+        return response()->json([
+            'message' => 'แก้ไขโรงภาพยนตร์เรียบร้อยแล้ว',
+            'cinema' => $cinema,
+        ]);
     }
 
     /**
-     * Update the specified resource in storage.
+     * ลบโรงภาพยนตร์แบบ Soft Delete (ผ่าน AJAX)
      */
-    public function update(Request $request, Cinema $cinema)
+    public function destroy(Cinema $cinema): JsonResponse
     {
-        //
+        $cinema->delete();
+
+        return response()->json([
+            'message' => 'ลบโรงภาพยนตร์เรียบร้อยแล้ว',
+        ]);
     }
 
     /**
-     * Remove the specified resource from storage.
+     * กฎ validation ใช้ร่วมกันทั้ง store และ update
      */
-    public function destroy(Cinema $cinema)
+    private function validateCinema(Request $request): array
     {
-        //
+        return $request->validate([
+            'name' => ['required', 'string', 'max:50'],
+            'total_seats' => ['required', 'integer', 'min:1', 'max:1000'],
+        ], [
+            'name.required' => 'กรุณากรอกชื่อโรงภาพยนตร์',
+            'name.max' => 'ชื่อโรงภาพยนตร์ต้องไม่เกิน 50 ตัวอักษร',
+            'total_seats.required' => 'กรุณากรอกจำนวนที่นั่ง',
+            'total_seats.integer' => 'จำนวนที่นั่งต้องเป็นตัวเลข',
+            'total_seats.min' => 'จำนวนที่นั่งต้องมากกว่า 0',
+            'total_seats.max' => 'จำนวนที่นั่งต้องไม่เกิน 1000',
+        ]);
     }
 }
