@@ -104,16 +104,33 @@ class BookingController extends Controller
     }
 
     /**
-     * รายการการจองของผู้ใช้ที่ล็อกอิน
+     * ประวัติการจองของผู้ใช้ที่ล็อกอิน (รวมที่ยกเลิกแล้ว — withTrashed)
      */
     public function myBookings(Request $request)
     {
-        $bookings = Booking::with(['showtime.movie', 'showtime.cinema'])
+        $bookings = Booking::withTrashed()
+            ->with(['showtime.movie', 'showtime.cinema'])
             ->where('user_id', $request->user()->id)
             ->latest()
             ->get();
 
         return view('booking.my', compact('bookings'));
+    }
+
+    /**
+     * ยกเลิกการจอง (Soft Delete) — ที่นั่งกลับมาว่างทันทีสำหรับรอบฉายนั้น
+     */
+    public function cancel(Request $request, Booking $booking): JsonResponse
+    {
+        // เฉพาะเจ้าของการจองเท่านั้น
+        if ($booking->user_id !== $request->user()->id) {
+            abort(403, 'ไม่สามารถยกเลิกการจองของผู้อื่นได้');
+        }
+
+        $booking->update(['status' => 'cancelled']);
+        $booking->delete(); // soft delete → seat ว่างอัตโนมัติ (query จองใหม่กรอง trashed ออก)
+
+        return response()->json(['message' => 'ยกเลิกการจองเรียบร้อยแล้ว']);
     }
 
     /**
