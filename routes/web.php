@@ -11,29 +11,32 @@ Route::get('/', function () {
     return view('dashboard');
 });
 
-// Movies Management
-Route::get('/movies/data', [MovieController::class, 'data'])->name('movies.data');
-Route::get('/movies', [MovieController::class, 'index'])->name('movies.index');
-Route::post('/movies', [MovieController::class, 'store'])->name('movies.store');
-Route::get('/movies/{movie}', [MovieController::class, 'show'])->name('movies.show');
-Route::put('/movies/{movie}', [MovieController::class, 'update'])->name('movies.update');
-Route::delete('/movies/{movie}', [MovieController::class, 'destroy'])->name('movies.destroy');
+// ===== ส่วนจัดการ (เฉพาะ admin) =====
+Route::middleware(['auth', 'admin'])->group(function () {
+    // Movies Management
+    Route::get('/movies/data', [MovieController::class, 'data'])->name('movies.data');
+    Route::get('/movies', [MovieController::class, 'index'])->name('movies.index');
+    Route::post('/movies', [MovieController::class, 'store'])->name('movies.store');
+    Route::get('/movies/{movie}', [MovieController::class, 'show'])->name('movies.show');
+    Route::put('/movies/{movie}', [MovieController::class, 'update'])->name('movies.update');
+    Route::delete('/movies/{movie}', [MovieController::class, 'destroy'])->name('movies.destroy');
 
-// Cinemas Management
-Route::get('/cinemas/data', [CinemaController::class, 'data'])->name('cinemas.data');
-Route::get('/cinemas', [CinemaController::class, 'index'])->name('cinemas.index');
-Route::post('/cinemas', [CinemaController::class, 'store'])->name('cinemas.store');
-Route::get('/cinemas/{cinema}', [CinemaController::class, 'show'])->name('cinemas.show');
-Route::put('/cinemas/{cinema}', [CinemaController::class, 'update'])->name('cinemas.update');
-Route::delete('/cinemas/{cinema}', [CinemaController::class, 'destroy'])->name('cinemas.destroy');
+    // Cinemas Management
+    Route::get('/cinemas/data', [CinemaController::class, 'data'])->name('cinemas.data');
+    Route::get('/cinemas', [CinemaController::class, 'index'])->name('cinemas.index');
+    Route::post('/cinemas', [CinemaController::class, 'store'])->name('cinemas.store');
+    Route::get('/cinemas/{cinema}', [CinemaController::class, 'show'])->name('cinemas.show');
+    Route::put('/cinemas/{cinema}', [CinemaController::class, 'update'])->name('cinemas.update');
+    Route::delete('/cinemas/{cinema}', [CinemaController::class, 'destroy'])->name('cinemas.destroy');
 
-// Showtimes Management
-Route::get('/showtimes/data', [ShowtimeController::class, 'data'])->name('showtimes.data');
-Route::get('/showtimes', [ShowtimeController::class, 'index'])->name('showtimes.index');
-Route::post('/showtimes', [ShowtimeController::class, 'store'])->name('showtimes.store');
-Route::get('/showtimes/{showtime}', [ShowtimeController::class, 'show'])->name('showtimes.show');
-Route::put('/showtimes/{showtime}', [ShowtimeController::class, 'update'])->name('showtimes.update');
-Route::delete('/showtimes/{showtime}', [ShowtimeController::class, 'destroy'])->name('showtimes.destroy');
+    // Showtimes Management
+    Route::get('/showtimes/data', [ShowtimeController::class, 'data'])->name('showtimes.data');
+    Route::get('/showtimes', [ShowtimeController::class, 'index'])->name('showtimes.index');
+    Route::post('/showtimes', [ShowtimeController::class, 'store'])->name('showtimes.store');
+    Route::get('/showtimes/{showtime}', [ShowtimeController::class, 'show'])->name('showtimes.show');
+    Route::put('/showtimes/{showtime}', [ShowtimeController::class, 'update'])->name('showtimes.update');
+    Route::delete('/showtimes/{showtime}', [ShowtimeController::class, 'destroy'])->name('showtimes.destroy');
+});
 
 // ===== Authentication =====
 // สำหรับผู้ที่ยังไม่ล็อกอิน
