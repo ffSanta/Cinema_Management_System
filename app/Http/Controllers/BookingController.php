@@ -14,6 +14,17 @@ class BookingController extends Controller
     private const SEATS_PER_ROW = 20;
 
     /**
+     * โซนราคาที่นั่ง — กำหนดตามสัดส่วนตำแหน่งแถว (0 = หน้าจอ, ใกล้ 1 = หลังสุด)
+     * ยิ่งอยู่หลังยิ่งแพง; ราคา = ราคาฐานของรอบฉาย × multiplier
+     * เรียง threshold มาก→น้อย (เช็คโซนแพงสุดก่อน)
+     */
+    private const ZONES = [
+        ['name' => 'VIP (หลัง)', 'threshold' => 0.75, 'multiplier' => 1.6, 'color' => '#6f42c1'],
+        ['name' => 'พรีเมียม',   'threshold' => 0.40, 'multiplier' => 1.3, 'color' => '#0d6efd'],
+        ['name' => 'ธรรมดา',     'threshold' => 0.00, 'multiplier' => 1.0, 'color' => '#198754'],
+    ];
+
+    /**
      * แสดงรายการรอบฉายที่เปิดให้จอง (เฉพาะรอบที่ยังไม่ฉาย) จัดกลุ่มตามภาพยนตร์
      */
     public function index()
@@ -37,7 +48,7 @@ class BookingController extends Controller
     {
         $showtime->load(['movie', 'cinema']);
 
-        $seatRows = $this->buildSeatRows($showtime->cinema->total_seats);
+        $seatRows = $this->buildSeatMap($showtime->cinema->total_seats, (float) $showtime->price);
 
         // ที่นั่งที่ถูกจองแล้ว (status booked + ยังไม่ถูกยกเลิก/soft delete)
         $bookedSeats = $showtime->bookings()
@@ -45,7 +56,14 @@ class BookingController extends Controller
             ->pluck('seat_number')
             ->all();
 
-        return view('booking.seats', compact('showtime', 'seatRows', 'bookedSeats'));
+        // สรุปโซนสำหรับ legend — โซนที่มีในผังนี้ พร้อมราคา
+        $zones = collect($seatRows)
+            ->unique('zone')
+            ->map(fn ($r) => ['zone' => $r['zone'], 'color' => $r['color'], 'price' => $r['price']])
+            ->sortByDesc('price')
+            ->values();
+
+        return view('booking.seats', compact('showtime', 'seatRows', 'bookedSeats', 'zones'));
     }
 
     /**
@@ -63,16 +81,16 @@ class BookingController extends Controller
 
         $seats = array_values(array_unique($validated['seats']));
 
-        // ตรวจว่าที่นั่งที่ส่งมาอยู่ในผังจริง (กันส่งค่ามั่ว)
-        $validSeats = collect($this->buildSeatRows($showtime->cinema->total_seats))
-            ->flatten()->all();
+        // แผนที่ราคาต่อที่นั่งตามโซน (ใช้ทั้งตรวจความถูกต้อง + คำนวณยอดรวมฝั่ง server)
+        $priceMap = $this->seatPriceMap($showtime->cinema->total_seats, (float) $showtime->price);
 
-        if (array_diff($seats, $validSeats)) {
+        // ตรวจว่าที่นั่งที่ส่งมาอยู่ในผังจริง (กันส่งค่ามั่ว)
+        if (array_diff($seats, array_keys($priceMap))) {
             return response()->json(['message' => 'ที่นั่งที่เลือกไม่ถูกต้อง'], 422);
         }
 
         // ทำใน transaction + ล็อคแถว กันสองคนจองที่นั่งเดียวกันพร้อมกัน
-        return DB::transaction(function () use ($request, $showtime, $seats) {
+        return DB::transaction(function () use ($request, $showtime, $seats, $priceMap) {
             $taken = Booking::where('showtime_id', $showtime->id)
                 ->where('status', 'booked')
                 ->whereIn('seat_number', $seats)
@@ -96,8 +114,10 @@ class BookingController extends Controller
                 ]);
             }
 
+            $total = array_sum(array_map(fn ($s) => $priceMap[$s], $seats));
+
             return response()->json([
-                'message' => 'จองตั๋วสำเร็จ ' . count($seats) . ' ที่นั่ง',
+                'message' => 'จองตั๋วสำเร็จ ' . count($seats) . ' ที่นั่ง รวม ' . number_format($total, 2) . ' บาท',
                 'seats' => $seats,
             ], 201);
         });
@@ -136,17 +156,66 @@ class BookingController extends Controller
     /**
      * สร้างผังที่นั่งจากจำนวนที่นั่งทั้งหมด → ['A' => ['A1'..'A10'], 'B' => [...], ...]
      */
-    private function buildSeatRows(int $total): array
+    /**
+     * สร้างผังที่นั่งพร้อมข้อมูลโซน/ราคาแต่ละแถว
+     * คืน array ของแถว: ['label','zone','color','price','seats'=>['A1',...]]
+     */
+    private function buildSeatMap(int $total, float $basePrice): array
     {
+        $totalRows = (int) ceil($total / self::SEATS_PER_ROW);
         $rows = [];
 
         for ($i = 0; $i < $total; $i++) {
-            $rowLabel = $this->rowLabel(intdiv($i, self::SEATS_PER_ROW));
+            $rowIndex = intdiv($i, self::SEATS_PER_ROW);
+
+            if (! isset($rows[$rowIndex])) {
+                $zone = $this->zoneForRow($rowIndex, $totalRows);
+                $rows[$rowIndex] = [
+                    'label' => $this->rowLabel($rowIndex),
+                    'zone' => $zone['name'],
+                    'color' => $zone['color'],
+                    'price' => round($basePrice * $zone['multiplier'], 2),
+                    'seats' => [],
+                ];
+            }
+
             $col = ($i % self::SEATS_PER_ROW) + 1;
-            $rows[$rowLabel][] = $rowLabel . $col;
+            $rows[$rowIndex]['seats'][] = $rows[$rowIndex]['label'] . $col;
         }
 
-        return $rows;
+        return array_values($rows);
+    }
+
+    /**
+     * แผนที่ราคาต่อที่นั่ง: ['A1' => 111.00, 'L5' => 178.00, ...]
+     */
+    private function seatPriceMap(int $total, float $basePrice): array
+    {
+        $map = [];
+
+        foreach ($this->buildSeatMap($total, $basePrice) as $row) {
+            foreach ($row['seats'] as $seat) {
+                $map[$seat] = $row['price'];
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * หาโซนราคาของแถวจากสัดส่วนตำแหน่ง (0 = หน้าจอ, ใกล้ 1 = หลังสุด)
+     */
+    private function zoneForRow(int $rowIndex, int $totalRows): array
+    {
+        $fraction = $totalRows > 0 ? $rowIndex / $totalRows : 0;
+
+        foreach (self::ZONES as $zone) {
+            if ($fraction >= $zone['threshold']) {
+                return $zone;
+            }
+        }
+
+        return self::ZONES[array_key_last(self::ZONES)];
     }
 
     /**
