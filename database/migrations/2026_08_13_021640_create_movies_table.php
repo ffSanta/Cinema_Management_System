@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->integer('duration_mins');
-            $table->string('poster_image');
+            $table->string('poster_image')->nullable();
             $table->text('synopsis');
             $table->timestamps();
             $table->softDeletes('deleted_at', precision: 0);

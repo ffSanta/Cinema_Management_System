@@ -3,63 +3,35 @@
 namespace App\Http\Controllers;
 
 use App\Models\Movie;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class MovieController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * แสดงหน้ารายการภาพยนตร์ (โครง DataTables)
      */
     public function index()
     {
-        //
+        return view('movies.index');
     }
 
     /**
-     * Show the form for creating a new resource.
+     * ส่งข้อมูลภาพยนตร์เป็น JSON ให้ DataTables ผ่าน AJAX
      */
-    public function create()
+    public function data(Request $request): JsonResponse
     {
-        //
-    }
+        $movies = Movie::latest()->get()->map(function (Movie $movie) {
+            return [
+                'id' => $movie->id,
+                'poster_url' => $movie->poster_url,
+                'title' => $movie->title,
+                'duration_mins' => $movie->duration_mins,
+                'synopsis' => $movie->synopsis,
+                'created_at' => $movie->created_at->format('d/m/Y H:i'),
+            ];
+        });
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(Movie $movie)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Movie $movie)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Movie $movie)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Movie $movie)
-    {
-        //
+        return response()->json(['data' => $movies]);
     }
 }
