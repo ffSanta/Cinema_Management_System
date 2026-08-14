@@ -23,7 +23,7 @@
                                 <div class="mb-2">
                                     <div><i class="bi bi-building text-success"></i> {{ $showtime->cinema->name }}</div>
                                     <div><i class="bi bi-clock text-warning"></i> {{ $showtime->show_time->format('d/m/Y H:i') }}</div>
-                                    <div><i class="bi bi-cash"></i> {{ number_format((float) $showtime->price, 2) }} บาท</div>
+                                    <div><i class="bi bi-cash"></i> {{ number_format((float) $showtime->price) }} บาท</div>
                                 </div>
                                 <div class="mb-2">
                                     @if ($available > 0)

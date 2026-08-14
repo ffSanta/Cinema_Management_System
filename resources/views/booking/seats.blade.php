@@ -17,29 +17,30 @@
         box-shadow: 0 6px 12px -6px rgba(0, 0, 0, .4);
     }
 
-    /* กล่องผังที่นั่ง — เลื่อนแนวนอนในกล่องตัวเอง ไม่ดันหน้าให้ล้นจอ */
+    /* กล่องผังที่นั่ง — ไม่มีแถบเลื่อน ใช้ scale-to-fit (JS) ย่อผังให้พอดีความกว้างเสมอ */
     .seat-map-wrapper {
-        overflow-x: auto;
+        overflow: hidden;
         max-width: 100%;
-        padding-bottom: .5rem;
         text-align: center;
     }
-    .seat-map { display: inline-block; min-width: min-content; text-align: left; }
-    .seat-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
-    .row-label { width: 22px; text-align: center; font-weight: 600; color: #6c757d; flex: 0 0 auto; }
+    /* จัดผังเป็นคอลัมน์ + ทุกแถว center รอบแกนกลางเดียวกัน (แถว VIP ที่กว้างกว่าจะไม่เลยไปทางขวา)
+       ทุกขนาดอิงตัวแปร --seat-size ซึ่ง JS ปรับให้ผังพอดีความกว้างเสมอ */
+    .seat-map { display: inline-flex; flex-direction: column; align-items: center; min-width: min-content; --seat-size: 28px; }
+    .seat-row { display: flex; align-items: center; gap: calc(var(--seat-size) * 0.14); margin-bottom: calc(var(--seat-size) * 0.14); }
+    .row-label {
+        width: calc(var(--seat-size) * 0.8); flex: 0 0 auto;
+        text-align: center; font-weight: 600; color: #6c757d;
+        font-size: calc(var(--seat-size) * 0.42);
+    }
     .seat {
-        width: 28px; height: 28px; flex: 0 0 auto;
-        border-radius: 5px; font-size: .65rem; line-height: 1;
+        width: var(--seat-size); height: var(--seat-size); flex: 0 0 auto; padding: 0;
+        border-radius: 5px; font-size: calc(var(--seat-size) * 0.42); line-height: 1;
         border: 1px solid transparent; cursor: pointer;
     }
-    /* ช่องทางเดินกลาง (aisle) — เว้นระยะก่อนที่นั่งที่ 11 */
-    .seat.aisle { margin-left: 26px; }
-
-    /* ราคาแต่ละแถว (ท้ายแถว) */
-    .row-price {
-        margin-left: 12px; flex: 0 0 auto;
-        font-size: .72rem; font-weight: 600; color: #495057; white-space: nowrap;
-    }
+    /* ช่องว่างในแถว (ทางเดินกลาง / จับคู่ VIP) */
+    .seat.gap { margin-left: calc(var(--seat-size) * 0.85); }
+    /* เว้นระยะระหว่างโซน */
+    .seat-row.zone-start { margin-top: calc(var(--seat-size) * 0.85); }
 
     /* สีที่นั่งตามโซน (ใช้ตัวแปร --zone จาก inline style ของแต่ละที่นั่ง) */
     .seat.available { background: #fff; border-color: var(--zone, #198754); color: var(--zone, #198754); }
@@ -53,15 +54,6 @@
 
     /* legend */
     .legend-box { width: 16px; height: 16px; border-radius: 4px; display: inline-block; vertical-align: middle; }
-
-    /* จอเล็ก (<576px): ย่อที่นั่งให้เห็นได้มากขึ้น ลดการเลื่อน */
-    @media (max-width: 575.98px) {
-        .seat { width: 22px; height: 22px; font-size: .55rem; }
-        .seat-row { gap: 3px; }
-        .seat.aisle { margin-left: 18px; }
-        .row-label { width: 18px; }
-        .row-price { margin-left: 8px; font-size: .65rem; }
-    }
 </style>
 @endpush
 
@@ -79,32 +71,35 @@
                     <p class="text-muted mb-3 small">
                         <i class="bi bi-building"></i> {{ $showtime->cinema->name }} &nbsp;|&nbsp;
                         <i class="bi bi-clock"></i> {{ $showtime->show_time->format('d/m/Y H:i') }} &nbsp;|&nbsp;
-                        <i class="bi bi-cash"></i> ราคาเริ่มต้น {{ number_format((float) $showtime->price, 2) }} บาท (ต่างกันตามโซน)
+                        <i class="bi bi-cash"></i> ราคาเริ่มต้น {{ number_format((float) $showtime->price) }} บาท (ต่างกันตามโซน)
                     </p>
 
                     <div class="screen mb-5">จอภาพยนตร์</div>
 
-                    <div class="seat-map-wrapper">
-                        <div class="seat-map">
+                    <div class="seat-map-wrapper" id="seatMapWrapper">
+                        <div class="seat-map" id="seatMap">
                             @foreach ($seatRows as $row)
-                                <div class="seat-row">
+                                <div class="seat-row {{ $row['zone_start'] ? 'zone-start' : '' }}">
                                     <span class="row-label">{{ $row['label'] }}</span>
                                     @foreach ($row['seats'] as $seat)
-                                        @php $isBooked = in_array($seat, $bookedSeats, true); @endphp
-                                        {{-- เว้นช่องทางเดินกลางก่อนที่นั่งที่ 11 --}}
+                                        @php
+                                            $isBooked = in_array($seat, $bookedSeats, true);
+                                            $pos = $loop->iteration;
+                                            // ช่องว่าง: VIP = จับคู่ (เว้นก่อนที่นั่งเลขคี่) / โซนอื่น = ทางเดินกลางที่ $aislePos
+                                            $hasGap = $row['pairs'] ? ($pos > 1 && $pos % 2 === 1) : ($pos === $aislePos);
+                                        @endphp
                                         <button type="button"
-                                            class="seat {{ $isBooked ? 'booked' : 'available' }} {{ $loop->iteration === 11 ? 'aisle' : '' }}"
+                                            class="seat {{ $isBooked ? 'booked' : 'available' }} {{ $hasGap ? 'gap' : '' }}"
                                             data-seat="{{ $seat }}"
                                             data-price="{{ $row['price'] }}"
-                                            title="{{ $seat }} — {{ $row['zone'] }} {{ number_format($row['price'], 2) }} บาท"
+                                            title="{{ $seat }} — {{ $row['zone'] }} {{ number_format($row['price']) }} บาท"
                                             style="--zone: {{ $row['color'] }}"
                                             @disabled($isBooked)>
-                                            {{ $loop->iteration }}
+                                            {{ $pos }}
                                         </button>
                                     @endforeach
-                                    <span class="row-price" style="color: {{ $row['color'] }}">
-                                        {{ number_format($row['price'], 0) }}฿
-                                    </span>
+                                    {{-- spacer ขวา (กว้างเท่าป้ายแถว) ให้ที่นั่งอยู่กึ่งกลางพอดี --}}
+                                    <span class="row-label" aria-hidden="true"></span>
                                 </div>
                             @endforeach
                         </div>
@@ -115,7 +110,7 @@
                         @foreach ($zones as $z)
                             <span>
                                 <span class="legend-box" style="border:2px solid {{ $z['color'] }}; background:#fff;"></span>
-                                {{ $z['zone'] }} — {{ number_format($z['price'], 2) }} บาท
+                                {{ $z['zone'] }} — {{ number_format($z['price']) }} บาท
                             </span>
                         @endforeach
                     </div>
@@ -141,7 +136,7 @@
                     </div>
                     <div class="d-flex justify-content-between fs-5 fw-bold mt-2">
                         <span>รวม</span>
-                        <span><span id="totalPrice">0.00</span> บาท</span>
+                        <span><span id="totalPrice">0</span> บาท</span>
                     </div>
                     <button id="btnConfirm" class="btn btn-success w-100 mt-3" disabled>
                         <i class="bi bi-check-circle"></i> ยืนยันการจอง
@@ -175,17 +170,37 @@
             toast.show();
         }
 
-        // รวมยอดจากราคาจริงของแต่ละที่นั่ง (data-price ตามโซน)
+        // ปรับขนาดที่นั่งให้ผังพอดีความกว้างเสมอ — ไม่มีแถบเลื่อน (ทุกมิติอิง --seat-size จึงย่อได้เป็นเส้นตรง)
+        const seatWrapperEl = document.getElementById('seatMapWrapper');
+        const seatMapEl = document.getElementById('seatMap');
+        function fitSeatMap() {
+            if (!seatWrapperEl || !seatMapEl) return;
+            const REF = 28; // ขนาดอ้างอิง
+            const avail = seatWrapperEl.clientWidth;
+            if (avail < 80) return; // layout ยังไม่นิ่ง — รอ ResizeObserver เรียกอีกครั้ง
+            seatMapEl.style.setProperty('--seat-size', REF + 'px');
+            const natural = seatMapEl.getBoundingClientRect().width;
+            const size = natural > avail ? Math.max(9, Math.floor(REF * avail / natural)) : REF;
+            seatMapEl.style.setProperty('--seat-size', size + 'px');
+        }
+        // ResizeObserver จับตอนกล่องได้ขนาดจริง/เปลี่ยนขนาด (ทนต่อ timing กว่า event load)
+        if (window.ResizeObserver && seatWrapperEl) {
+            new ResizeObserver(fitSeatMap).observe(seatWrapperEl);
+        }
+        $(window).on('resize load', fitSeatMap);
+        fitSeatMap();
+
+        // รวมยอดจากราคาจริงของแต่ละที่นั่ง (data-price ตามโซน) — ราคาเป็นจำนวนเต็ม
         function refreshSummary() {
             let seats = [];
             let total = 0;
             $('.seat.selected').each(function () {
                 seats.push($(this).data('seat'));
-                total += parseFloat($(this).data('price'));
+                total += parseInt($(this).data('price'), 10);
             });
             $('#selectedSeats').text(seats.length ? seats.join(', ') : '-');
             $('#seatCount').text(seats.length);
-            $('#totalPrice').text(total.toFixed(2));
+            $('#totalPrice').text(total.toLocaleString());
             $('#btnConfirm').prop('disabled', seats.length === 0);
         }
 
