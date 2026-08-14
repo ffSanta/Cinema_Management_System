@@ -81,7 +81,8 @@
 
                         <div class="mb-3">
                             <label for="show_time" class="form-label">เวลาฉาย <span class="text-danger">*</span></label>
-                            <input type="datetime-local" class="form-control" id="show_time" name="show_time">
+                            <input type="datetime-local" class="form-control" id="show_time" name="show_time"
+                                   min="{{ $minShowTime }}">
                             <div class="invalid-feedback" data-field="show_time"></div>
                         </div>
 
