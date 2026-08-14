@@ -37,4 +37,19 @@ class Showtime extends Model
     {
         return $this->hasMany(Booking::class);
     }
+
+    /**
+     * ลบรอบฉาย → ลบ booking ของรอบนั้นตามไปด้วย (cascade soft delete)
+     * ทำงานทั้งตอนลบรอบโดยตรง และตอน cascade มาจากการลบหนัง/โรง
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (Showtime $showtime) {
+            if ($showtime->isForceDeleting()) {
+                $showtime->bookings()->withTrashed()->get()->each->forceDelete();
+            } else {
+                $showtime->bookings()->get()->each->delete();
+            }
+        });
+    }
 }

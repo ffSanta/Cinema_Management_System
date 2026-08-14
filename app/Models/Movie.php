@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
@@ -28,5 +29,25 @@ class Movie extends Model
         }
 
         return 'https://placehold.co/80x120?text=No+Image';
+    }
+
+    public function showtimes(): HasMany
+    {
+        return $this->hasMany(Showtime::class);
+    }
+
+    /**
+     * ลบภาพยนตร์ → ลบรอบฉายของหนังนั้นตามไปด้วย (cascade soft delete)
+     * ลบแต่ละรอบทีละตัวเพื่อให้ event ของ Showtime ทำงาน (ต่อไปยัง booking)
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (Movie $movie) {
+            if ($movie->isForceDeleting()) {
+                $movie->showtimes()->withTrashed()->get()->each->forceDelete();
+            } else {
+                $movie->showtimes()->get()->each->delete();
+            }
+        });
     }
 }
