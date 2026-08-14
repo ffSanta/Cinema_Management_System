@@ -90,14 +90,14 @@ class CinemaController extends Controller
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:50'],
-            'total_seats' => ['required', 'integer', 'min:1', 'max:1000'],
+            'total_seats' => ['required', 'integer', 'min:1', 'max:300'],
         ], [
             'name.required' => 'กรุณากรอกชื่อโรงภาพยนตร์',
             'name.max' => 'ชื่อโรงภาพยนตร์ต้องไม่เกิน 50 ตัวอักษร',
             'total_seats.required' => 'กรุณากรอกจำนวนที่นั่ง',
             'total_seats.integer' => 'จำนวนที่นั่งต้องเป็นตัวเลข',
             'total_seats.min' => 'จำนวนที่นั่งต้องมากกว่า 0',
-            'total_seats.max' => 'จำนวนที่นั่งต้องไม่เกิน 1000',
+            'total_seats.max' => 'จำนวนที่นั่งต้องไม่เกิน 300',
         ]);
     }
 }

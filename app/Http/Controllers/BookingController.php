@@ -10,18 +10,19 @@ use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
 {
-    /** จำนวนที่นั่งต่อแถวในผังที่นั่ง (มากขึ้น = ผังกว้างแนวนอนเหมือนโรงหนังจริง) */
+    /** จำนวนที่นั่งต่อแถวในผังที่นั่ง */
     private const SEATS_PER_ROW = 20;
 
     /**
      * โซนราคาที่นั่ง — กำหนดตามสัดส่วนตำแหน่งแถว (0 = หน้าจอ, ใกล้ 1 = หลังสุด)
      * ยิ่งอยู่หลังยิ่งแพง; ราคา = ราคาฐานของรอบฉาย × multiplier
+     * pairs = true → จัดที่นั่งแบบจับคู่ (1,2 - 3,4 - ...) แทนทางเดินกลาง
      * เรียง threshold มาก→น้อย (เช็คโซนแพงสุดก่อน)
      */
     private const ZONES = [
-        ['name' => 'VIP (หลัง)', 'threshold' => 0.75, 'multiplier' => 1.6, 'color' => '#6f42c1'],
-        ['name' => 'พรีเมียม',   'threshold' => 0.40, 'multiplier' => 1.3, 'color' => '#0d6efd'],
-        ['name' => 'ธรรมดา',     'threshold' => 0.00, 'multiplier' => 1.0, 'color' => '#198754'],
+        ['name' => 'VIP (หลัง)', 'threshold' => 0.75, 'multiplier' => 1.6, 'color' => '#6f42c1', 'pairs' => true],
+        ['name' => 'พรีเมียม',   'threshold' => 0.40, 'multiplier' => 1.3, 'color' => '#0d6efd', 'pairs' => false],
+        ['name' => 'ธรรมดา',     'threshold' => 0.00, 'multiplier' => 1.0, 'color' => '#198754', 'pairs' => false],
     ];
 
     /**
@@ -30,7 +31,7 @@ class BookingController extends Controller
     public function index()
     {
         $showtimes = Showtime::with(['movie', 'cinema'])
-            ->withCount(['bookings' => fn ($q) => $q->where('status', 'booked')])
+            ->withCount(['bookings' => fn($q) => $q->where('status', 'booked')])
             ->whereHas('movie')
             ->whereHas('cinema')
             ->where('show_time', '>=', now())
@@ -59,11 +60,14 @@ class BookingController extends Controller
         // สรุปโซนสำหรับ legend — โซนที่มีในผังนี้ พร้อมราคา
         $zones = collect($seatRows)
             ->unique('zone')
-            ->map(fn ($r) => ['zone' => $r['zone'], 'color' => $r['color'], 'price' => $r['price']])
+            ->map(fn($r) => ['zone' => $r['zone'], 'color' => $r['color'], 'price' => $r['price']])
             ->sortByDesc('price')
             ->values();
 
-        return view('booking.seats', compact('showtime', 'seatRows', 'bookedSeats', 'zones'));
+        // ตำแหน่งที่นั่งที่จะเว้นทางเดินกลาง (โซนที่ไม่ใช่ VIP) = กึ่งกลางแถว
+        $aislePos = intdiv(self::SEATS_PER_ROW, 2) + 1;
+
+        return view('booking.seats', compact('showtime', 'seatRows', 'bookedSeats', 'zones', 'aislePos'));
     }
 
     /**
@@ -114,10 +118,10 @@ class BookingController extends Controller
                 ]);
             }
 
-            $total = array_sum(array_map(fn ($s) => $priceMap[$s], $seats));
+            $total = array_sum(array_map(fn($s) => $priceMap[$s], $seats));
 
             return response()->json([
-                'message' => 'จองตั๋วสำเร็จ ' . count($seats) . ' ที่นั่ง รวม ' . number_format($total, 2) . ' บาท',
+                'message' => 'จองตั๋วสำเร็จ ' . count($seats) . ' ที่นั่ง รวม ' . number_format($total) . ' บาท',
                 'seats' => $seats,
             ], 201);
         });
@@ -164,6 +168,7 @@ class BookingController extends Controller
     {
         $totalRows = (int) ceil($total / self::SEATS_PER_ROW);
         $rows = [];
+        $prevZone = null;
 
         for ($i = 0; $i < $total; $i++) {
             $rowIndex = intdiv($i, self::SEATS_PER_ROW);
@@ -174,9 +179,12 @@ class BookingController extends Controller
                     'label' => $this->rowLabel($rowIndex),
                     'zone' => $zone['name'],
                     'color' => $zone['color'],
-                    'price' => round($basePrice * $zone['multiplier'], 2),
+                    'price' => (int) round($basePrice * $zone['multiplier']),
+                    'pairs' => $zone['pairs'],
+                    'zone_start' => ($prevZone !== null && $prevZone !== $zone['name']),
                     'seats' => [],
                 ];
+                $prevZone = $zone['name'];
             }
 
             $col = ($i % self::SEATS_PER_ROW) + 1;
