@@ -95,13 +95,17 @@ class MovieController extends Controller
     }
 
     /**
-     * ลบภาพยนตร์แบบ Soft Delete (ผ่าน AJAX)
-     * หมายเหตุ: ไม่ลบไฟล์โปสเตอร์ เพราะ soft delete เก็บ record ไว้ให้กู้คืนได้
-     * (ไฟล์จะถูกลบจริงตอน force delete เท่านั้น)
+     * ลบภาพยนตร์แบบ Soft Delete (ผ่าน AJAX) + ลบไฟล์โปสเตอร์ออกจาก storage
      */
     public function destroy(Movie $movie): JsonResponse
     {
-        $movie->delete();
+        // ลบไฟล์โปสเตอร์ออกจาก storage/app/public (สะท้อนไปที่ public/storage ผ่าน symlink)
+        if ($movie->poster_image) {
+            Storage::disk('public')->delete($movie->poster_image);
+            $movie->update(['poster_image' => null]); // เคลียร์ path กัน record ชี้ไฟล์ที่ไม่มีแล้ว
+        }
+
+        $movie->delete(); // soft delete record
 
         return response()->json([
             'message' => 'ลบภาพยนตร์เรียบร้อยแล้ว',
@@ -116,7 +120,7 @@ class MovieController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:20'],
             'duration_mins' => ['required', 'integer', 'min:1', 'max:1000'],
-            'synopsis' => ['required', 'string', 'max:60'],
+            'synopsis' => ['required', 'string', 'max:100'],
             'poster_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ], [
             'title.required' => 'กรุณากรอกชื่อเรื่อง',
