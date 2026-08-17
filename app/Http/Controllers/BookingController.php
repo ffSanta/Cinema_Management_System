@@ -15,14 +15,14 @@ class BookingController extends Controller
 
     /**
      * โซนราคาที่นั่ง — กำหนดตามสัดส่วนตำแหน่งแถว (0 = หน้าจอ, ใกล้ 1 = หลังสุด)
-     * ยิ่งอยู่หลังยิ่งแพง; ราคา = ราคาฐานของรอบฉาย × multiplier
+     * column = คอลัมน์ราคาของโซนนั้นในตาราง showtimes (admin ตั้งเองต่อรอบ)
      * pairs = true → จัดที่นั่งแบบจับคู่ (1,2 - 3,4 - ...) แทนทางเดินกลาง
      * เรียง threshold มาก→น้อย (เช็คโซนแพงสุดก่อน)
      */
     private const ZONES = [
-        ['name' => 'VIP (หลัง)', 'threshold' => 0.75, 'multiplier' => 1.6, 'color' => '#6f42c1', 'pairs' => true],
-        ['name' => 'พรีเมียม',   'threshold' => 0.40, 'multiplier' => 1.3, 'color' => '#0d6efd', 'pairs' => false],
-        ['name' => 'ธรรมดา',     'threshold' => 0.00, 'multiplier' => 1.0, 'color' => '#198754', 'pairs' => false],
+        ['name' => 'VIP (หลัง)', 'threshold' => 0.75, 'column' => 'price_vip',     'color' => '#6f42c1', 'pairs' => true],
+        ['name' => 'พรีเมียม',   'threshold' => 0.40, 'column' => 'price_premium', 'color' => '#0d6efd', 'pairs' => false],
+        ['name' => 'ธรรมดา',     'threshold' => 0.00, 'column' => 'price',         'color' => '#198754', 'pairs' => false],
     ];
 
     /**
@@ -49,7 +49,7 @@ class BookingController extends Controller
     {
         $showtime->load(['movie', 'cinema']);
 
-        $seatRows = $this->buildSeatMap($showtime->cinema->total_seats, (float) $showtime->price);
+        $seatRows = $this->buildSeatMap($showtime->cinema->total_seats, $showtime);
 
         // ที่นั่งที่ถูกจองแล้ว (status booked + ยังไม่ถูกยกเลิก/soft delete)
         $bookedSeats = $showtime->bookings()
@@ -86,7 +86,7 @@ class BookingController extends Controller
         $seats = array_values(array_unique($validated['seats']));
 
         // แผนที่ราคาต่อที่นั่งตามโซน (ใช้ทั้งตรวจความถูกต้อง + คำนวณยอดรวมฝั่ง server)
-        $priceMap = $this->seatPriceMap($showtime->cinema->total_seats, (float) $showtime->price);
+        $priceMap = $this->seatPriceMap($showtime->cinema->total_seats, $showtime);
 
         // ตรวจว่าที่นั่งที่ส่งมาอยู่ในผังจริง (กันส่งค่ามั่ว)
         if (array_diff($seats, array_keys($priceMap))) {
@@ -164,7 +164,7 @@ class BookingController extends Controller
      * สร้างผังที่นั่งพร้อมข้อมูลโซน/ราคาแต่ละแถว
      * คืน array ของแถว: ['label','zone','color','price','seats'=>['A1',...]]
      */
-    private function buildSeatMap(int $total, float $basePrice): array
+    private function buildSeatMap(int $total, Showtime $showtime): array
     {
         $totalRows = (int) ceil($total / self::SEATS_PER_ROW);
         $rows = [];
@@ -179,7 +179,8 @@ class BookingController extends Controller
                     'label' => $this->rowLabel($rowIndex),
                     'zone' => $zone['name'],
                     'color' => $zone['color'],
-                    'price' => (int) round($basePrice * $zone['multiplier']),
+                    // ราคาโซนที่ admin ตั้งไว้ต่อรอบ (fallback เป็นราคาธรรมดาถ้าโซนนั้นยังไม่ตั้ง)
+                    'price' => (int) round($showtime->{$zone['column']} ?? $showtime->price),
                     'pairs' => $zone['pairs'],
                     'zone_start' => ($prevZone !== null && $prevZone !== $zone['name']),
                     'seats' => [],
@@ -195,13 +196,13 @@ class BookingController extends Controller
     }
 
     /**
-     * แผนที่ราคาต่อที่นั่ง: ['A1' => 111.00, 'L5' => 178.00, ...]
+     * แผนที่ราคาต่อที่นั่ง: ['A1' => 111, 'L5' => 178, ...]
      */
-    private function seatPriceMap(int $total, float $basePrice): array
+    private function seatPriceMap(int $total, Showtime $showtime): array
     {
         $map = [];
 
-        foreach ($this->buildSeatMap($total, $basePrice) as $row) {
+        foreach ($this->buildSeatMap($total, $showtime) as $row) {
             foreach ($row['seats'] as $seat) {
                 $map[$seat] = $row['price'];
             }

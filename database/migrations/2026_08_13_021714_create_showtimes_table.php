@@ -18,7 +18,9 @@ return new class extends Migration
             $table->foreignIdFor(Movie::class)->constrained()->cascadeOnDelete();
             $table->foreignIdFor(Cinema::class)->constrained()->cascadeOnDelete();
             $table->dateTime('show_time', precision: 0);
-            $table->decimal('price', total: 8, places: 2);
+            $table->decimal('price', total: 8, places: 2);              // ราคาโซนธรรมดา
+            $table->decimal('price_premium', total: 8, places: 2)->nullable(); // ราคาโซนพรีเมียม
+            $table->decimal('price_vip', total: 8, places: 2)->nullable();     // ราคาโซน VIP
             $table->timestamps();
             $table->softDeletes('deleted_at', precision: 0);
         });

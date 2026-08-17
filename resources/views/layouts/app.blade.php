@@ -17,6 +17,8 @@
     {{-- DataTables Responsive (ยุบคอลัมน์บนจอเล็ก) --}}
     <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
 
+    @include('layouts.theme')
+
     @stack('styles')
 </head>
 <body class="bg-light">

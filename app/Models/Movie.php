@@ -28,7 +28,8 @@ class Movie extends Model
             return Storage::url($this->poster_image);
         }
 
-        return 'https://placehold.co/80x120?text=No+Image';
+        // placeholder ทรงโปสเตอร์ (2:3) พื้นเข้ม พร้อมชื่อหนัง
+        return 'https://placehold.co/300x450/1a1a2e/e94560?text=' . rawurlencode($this->title ?? 'No Image');
     }
 
     public function showtimes(): HasMany

@@ -17,10 +17,10 @@ class ShowtimeController extends Controller
     public function index()
     {
         $movies = Movie::orderBy('title')->get(['id', 'title']);
-        $cinemas = Cinema::orderBy('name')->get(['id', 'name']);
+        $cinemas = Cinema::orderBy('name')->get(['id', 'name', 'total_seats']);
 
-        // min ของ input = พรุ่งนี้ 00:00 → เลือกวันนี้/ก่อนหน้าไม่ได้
-        $minShowTime = now()->addDay()->startOfDay()->format('Y-m-d\TH:i');
+        // min ของ date picker = พรุ่งนี้ → เลือกวันนี้/ก่อนหน้าไม่ได้
+        $minShowTime = now()->addDay()->format('Y-m-d');
 
         return view('showtimes.index', compact('movies', 'cinemas', 'minShowTime'));
     }
@@ -46,7 +46,9 @@ class ShowtimeController extends Controller
                     'display' => $start->format('d/m/Y H:i') . ' - ' . $end->format('H:i'),
                     'timestamp' => $start->timestamp,
                 ],
-                'price' => number_format((float) $s->price, 2),
+                'price' => 'ธรรมดา ' . number_format((float) $s->price)
+                    . ' / พรีเมียม ' . number_format((float) $s->price_premium)
+                    . ' / VIP ' . number_format((float) $s->price_vip),
             ];
         });
 
@@ -78,9 +80,11 @@ class ShowtimeController extends Controller
             'id' => $showtime->id,
             'movie_id' => $showtime->movie_id,
             'cinema_id' => $showtime->cinema_id,
-            // รูปแบบสำหรับ input datetime-local
-            'show_time' => $showtime->show_time->format('Y-m-d\TH:i'),
+            // รูปแบบสำหรับ flatpickr (Y-m-d H:i)
+            'show_time' => $showtime->show_time->format('Y-m-d H:i'),
             'price' => $showtime->price,
+            'price_premium' => $showtime->price_premium,
+            'price_vip' => $showtime->price_vip,
         ]);
     }
 
@@ -115,11 +119,17 @@ class ShowtimeController extends Controller
      */
     private function validateShowtime(Request $request): array
     {
+        // โซนที่โรงนี้มีจริง → บังคับกรอกเฉพาะราคาโซนที่มี (โซนที่ไม่มีเว้นได้)
+        $cinema = Cinema::find($request->input('cinema_id'));
+        $zones = $cinema?->availableZoneKeys() ?? ['regular', 'premium', 'vip'];
+
         return $request->validate([
             'movie_id' => ['required', 'exists:movies,id'],
             'cinema_id' => ['required', 'exists:cinemas,id'],
             'show_time' => ['required', 'date'],
-            'price' => ['required', 'numeric', 'min:0', 'max:999.99'],
+            'price' => ['required', 'numeric', 'min:0', 'max:999999.99'],
+            'price_premium' => [in_array('premium', $zones, true) ? 'required' : 'nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'price_vip' => [in_array('vip', $zones, true) ? 'required' : 'nullable', 'numeric', 'min:0', 'max:999999.99'],
         ], [
             'movie_id.required' => 'กรุณาเลือกภาพยนตร์',
             'movie_id.exists' => 'ไม่พบภาพยนตร์ที่เลือก',
@@ -127,9 +137,15 @@ class ShowtimeController extends Controller
             'cinema_id.exists' => 'ไม่พบโรงภาพยนตร์ที่เลือก',
             'show_time.required' => 'กรุณาเลือกเวลาฉาย',
             'show_time.date' => 'รูปแบบเวลาไม่ถูกต้อง',
-            'price.required' => 'กรุณากรอกราคา',
+            'price.required' => 'กรุณากรอกราคาโซนธรรมดา',
             'price.numeric' => 'ราคาต้องเป็นตัวเลข',
             'price.min' => 'ราคาต้องไม่ติดลบ',
+            'price_premium.required' => 'กรุณากรอกราคาโซนพรีเมียม',
+            'price_premium.numeric' => 'ราคาต้องเป็นตัวเลข',
+            'price_premium.min' => 'ราคาต้องไม่ติดลบ',
+            'price_vip.required' => 'กรุณากรอกราคาโซน VIP',
+            'price_vip.numeric' => 'ราคาต้องเป็นตัวเลข',
+            'price_vip.min' => 'ราคาต้องไม่ติดลบ',
         ]);
     }
 

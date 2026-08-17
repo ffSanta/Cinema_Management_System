@@ -6,19 +6,19 @@ use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\MovieController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ShowtimeController;
+use App\Models\Movie;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('dashboard');
+    $movies = Movie::latest()->get();
+
+    return view('dashboard', compact('movies'));
 });
 
 // ===== ส่วนจัดการ (เฉพาะ admin) =====
 Route::middleware(['auth', 'admin'])->group(function () {
-    // Movies Management
-    Route::get('/movies/data', [MovieController::class, 'data'])->name('movies.data');
-    Route::get('/movies', [MovieController::class, 'index'])->name('movies.index');
+    // Movies Management — เพิ่ม/แก้ไข/ลบ (admin เท่านั้น; ส่วนดูรายการอยู่กลุ่ม auth ด้านล่าง)
     Route::post('/movies', [MovieController::class, 'store'])->name('movies.store');
-    Route::get('/movies/{movie}', [MovieController::class, 'show'])->name('movies.show');
     Route::put('/movies/{movie}', [MovieController::class, 'update'])->name('movies.update');
     Route::delete('/movies/{movie}', [MovieController::class, 'destroy'])->name('movies.destroy');
 
@@ -54,6 +54,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
+    // ดูรายการภาพยนตร์ (ทั้ง admin และ user) — เพิ่ม/แก้ไข/ลบ เฉพาะ admin (กลุ่มด้านบน)
+    Route::get('/movies/data', [MovieController::class, 'data'])->name('movies.data');
+    Route::get('/movies', [MovieController::class, 'index'])->name('movies.index');
+    Route::get('/movies/{movie}', [MovieController::class, 'show'])->name('movies.show');
 });
 
 // ===== Booking (เลือกรอบฉาย + จองที่นั่ง) — เฉพาะสมาชิก user, admin เข้าไม่ได้ =====

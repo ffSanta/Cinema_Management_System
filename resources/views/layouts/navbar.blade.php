@@ -1,12 +1,11 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
     <div class="container">
         <a class="navbar-brand fw-bold" href="{{ url('/') }}">
-            <i class="bi bi-film"></i> Cinema
+            Cinema
         </a>
 
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-                data-bs-target="#mainNav" aria-controls="mainNav"
-                aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+            aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
 
@@ -14,7 +13,7 @@
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
                     <a class="nav-link {{ request()->is('/') ? 'active' : '' }}" href="{{ url('/') }}">
-                        <i class="bi bi-house-door"></i> หน้าหลัก
+                        หน้าหลัก
                     </a>
                 </li>
 
@@ -22,13 +21,20 @@
                 @auth
                     @if (auth()->user()->role === 'user')
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->is('booking*') ? 'active' : '' }}" href="{{ route('booking.index') }}">
-                                <i class="bi bi-ticket-perforated"></i> จองตั๋ว
+                            <a class="nav-link {{ request()->is('movies*') ? 'active' : '' }}" href="{{ url('/movies') }}">
+                                ภาพยนตร์
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->is('my-bookings') ? 'active' : '' }}" href="{{ route('booking.my') }}">
-                                <i class="bi bi-journal-check"></i> การจองของฉัน
+                            <a class="nav-link {{ request()->is('booking*') ? 'active' : '' }}"
+                                href="{{ route('booking.index') }}">
+                                จองตั๋ว
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->is('my-bookings') ? 'active' : '' }}"
+                                href="{{ route('booking.my') }}">
+                                การจองของฉัน
                             </a>
                         </li>
                     @endif
@@ -37,17 +43,19 @@
                     @if (auth()->user()->role === 'admin')
                         <li class="nav-item">
                             <a class="nav-link {{ request()->is('movies*') ? 'active' : '' }}" href="{{ url('/movies') }}">
-                                <i class="bi bi-camera-reels"></i> ภาพยนตร์
+                                ภาพยนตร์
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->is('cinemas*') ? 'active' : '' }}" href="{{ url('/cinemas') }}">
-                                <i class="bi bi-building"></i> โรงภาพยนตร์
+                            <a class="nav-link {{ request()->is('cinemas*') ? 'active' : '' }}"
+                                href="{{ url('/cinemas') }}">
+                                โรงภาพยนตร์
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {{ request()->is('showtimes*') ? 'active' : '' }}" href="{{ url('/showtimes') }}">
-                                <i class="bi bi-clock"></i> รอบฉาย
+                            <a class="nav-link {{ request()->is('showtimes*') ? 'active' : '' }}"
+                                href="{{ url('/showtimes') }}">
+                                รอบฉาย
                             </a>
                         </li>
                     @endif
@@ -63,7 +71,8 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->is('register') ? 'active' : '' }}" href="{{ route('register') }}">
+                        <a class="nav-link {{ request()->is('register') ? 'active' : '' }}"
+                            href="{{ route('register') }}">
                             <i class="bi bi-person-plus"></i> สมัครสมาชิก
                         </a>
                     </li>
@@ -71,8 +80,8 @@
 
                 @auth
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button"
-                           data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
                             <i class="bi bi-person-circle"></i> {{ auth()->user()->name }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
@@ -81,7 +90,9 @@
                                     <i class="bi bi-person"></i> ข้อมูลส่วนตัว
                                 </a>
                             </li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
                             <li>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf

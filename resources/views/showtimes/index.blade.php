@@ -3,26 +3,36 @@
 @section('title', 'รอบฉาย')
 
 @push('styles')
-<style>
-    #showtimesTable td.wrap-cell {
-        white-space: normal;
-        max-width: 220px;
-        word-break: break-word;
-        overflow-wrap: anywhere;
-    }
-    #showtimesTable ul.dtr-details { width: 100%; margin: 0; }
-    #showtimesTable ul.dtr-details > li {
-        white-space: normal;
-        word-break: break-word;
-        overflow-wrap: anywhere;
-    }
-    #showtimesTable .dtr-data { word-break: break-word; overflow-wrap: anywhere; }
-</style>
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
+    <style>
+        #showtimesTable td.wrap-cell {
+            white-space: normal;
+            max-width: 220px;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        #showtimesTable ul.dtr-details {
+            width: 100%;
+            margin: 0;
+        }
+
+        #showtimesTable ul.dtr-details>li {
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        #showtimesTable .dtr-data {
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+    </style>
 @endpush
 
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0"><i class="bi bi-clock"></i> จัดการรอบฉาย</h2>
+        <h2 class="mb-0"> จัดการรอบฉาย</h2>
         <button type="button" class="btn btn-primary" id="btnAdd">
             <i class="bi bi-plus-lg"></i> เพิ่มรอบฉาย
         </button>
@@ -73,7 +83,9 @@
                             <select class="form-select" id="cinema_id" name="cinema_id">
                                 <option value="">-- เลือกโรงภาพยนตร์ --</option>
                                 @foreach ($cinemas as $cinema)
-                                    <option value="{{ $cinema->id }}">{{ $cinema->name }}</option>
+                                    <option value="{{ $cinema->id }}"
+                                        data-zones="{{ implode(',', $cinema->availableZoneKeys()) }}">{{ $cinema->name }}
+                                    </option>
                                 @endforeach
                             </select>
                             <div class="invalid-feedback" data-field="cinema_id"></div>
@@ -81,15 +93,33 @@
 
                         <div class="mb-3">
                             <label for="show_time" class="form-label">เวลาฉาย <span class="text-danger">*</span></label>
-                            <input type="datetime-local" class="form-control" id="show_time" name="show_time"
-                                   min="{{ $minShowTime }}">
+                            <input type="text" class="form-control" id="show_time" name="show_time"
+                                placeholder="เลือกวันและเวลา" autocomplete="off">
                             <div class="invalid-feedback" data-field="show_time"></div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="price" class="form-label">ราคา (บาท) <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="price" name="price" min="0" step="0.01">
-                            <div class="invalid-feedback" data-field="price"></div>
+                        <label class="form-label mb-1">ราคาต่อโซน <span class="text-danger">*</span></label>
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-sm-4">
+                                <label for="price" class="form-label small mb-0">ธรรมดา</label>
+                                <input type="number" class="form-control" id="price" name="price" min="0"
+                                    step="1">
+                                <div class="invalid-feedback" data-field="price"></div>
+                            </div>
+                            <div class="col-12 col-sm-4">
+                                <label for="price_premium" class="form-label small mb-0">พรีเมียม
+                                </label>
+                                <input type="number" class="form-control" id="price_premium" name="price_premium"
+                                    min="0" step="1">
+                                <div class="invalid-feedback" data-field="price_premium"></div>
+                            </div>
+                            <div class="col-12 col-sm-4">
+                                <label for="price_vip" class="form-label small mb-0">VIP
+                                </label>
+                                <input type="number" class="form-control" id="price_vip" name="price_vip" min="0"
+                                    step="1">
+                                <div class="invalid-feedback" data-field="price_vip"></div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -137,168 +167,244 @@
 @endsection
 
 @push('scripts')
-<script>
-    $(function () {
-        const table = $('#showtimesTable').DataTable({
-            processing: true,
-            responsive: true,
-            autoWidth: false,
-            ajax: "{{ route('showtimes.data') }}",
-            order: [[3, 'asc']], // เรียงตามเวลาฉาย จากใกล้ที่สุดขึ้นก่อน
-            columns: [
-                { data: 'id' },
-                { data: 'movie', className: 'wrap-cell', responsivePriority: 1,
-                  render: function (t) { return $('<div>').text(t || '').html(); } },
-                { data: 'cinema', className: 'wrap-cell',
-                  render: function (t) { return $('<div>').text(t || '').html(); } },
-                {
-                    data: 'show_time',
-                    // แสดงข้อความ display แต่เรียงลำดับด้วย timestamp (กันเรียงตาม string เพี้ยน)
-                    render: function (data, type) {
-                        return (type === 'sort' || type === 'type') ? data.timestamp : data.display;
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
+    <script>
+        $(function() {
+            // date picker ภาษาไทย (flatpickr locale th) — เลือกได้ตั้งแต่พรุ่งนี้
+            const showTimePicker = flatpickr('#show_time', {
+                locale: 'th',
+                enableTime: true,
+                time_24hr: true,
+                dateFormat: 'Y-m-d H:i', // ค่าที่ส่ง server
+                altInput: true,
+                altFormat: 'j F Y เวลา H:i น.', // ที่แสดงให้ผู้ใช้ (ภาษาไทย)
+                minDate: "{{ $minShowTime }}",
+                disableMobile: true, // ใช้ flatpickr เสมอ (ไม่ใช้ native picker)
+            });
+
+            const table = $('#showtimesTable').DataTable({
+                processing: true,
+                responsive: true,
+                autoWidth: false,
+                ajax: "{{ route('showtimes.data') }}",
+                order: [
+                    [3, 'asc']
+                ], // เรียงตามเวลาฉาย จากใกล้ที่สุดขึ้นก่อน
+                columns: [{
+                        data: 'id'
+                    },
+                    {
+                        data: 'movie',
+                        className: 'wrap-cell',
+                        responsivePriority: 1,
+                        render: function(t) {
+                            return $('<div>').text(t || '').html();
+                        }
+                    },
+                    {
+                        data: 'cinema',
+                        className: 'wrap-cell',
+                        render: function(t) {
+                            return $('<div>').text(t || '').html();
+                        }
+                    },
+                    {
+                        data: 'show_time',
+                        // แสดงข้อความ display แต่เรียงลำดับด้วย timestamp (กันเรียงตาม string เพี้ยน)
+                        render: function(data, type) {
+                            return (type === 'sort' || type === 'type') ? data.timestamp : data
+                                .display;
+                        }
+                    },
+                    {
+                        data: 'price',
+                        className: 'text-end'
+                    },
+                    {
+                        data: 'id',
+                        orderable: false,
+                        searchable: false,
+                        responsivePriority: 2,
+                        className: 'text-end',
+                        render: function(id, type, row) {
+                            const label = row.movie + ' @ ' + row.cinema;
+                            return '<button class="btn btn-sm btn-outline-primary btn-edit" data-id="' +
+                                id + '">' +
+                                '<i class="bi bi-pencil"></i></button> ' +
+                                '<button class="btn btn-sm btn-outline-danger btn-delete" data-id="' +
+                                id +
+                                '" data-label="' + $('<div>').text(label).html() + '">' +
+                                '<i class="bi bi-trash"></i></button>';
+                        }
+                    },
+                ],
+                language: {
+                    processing: "กำลังโหลด...",
+                    search: "ค้นหา:",
+                    lengthMenu: "แสดง _MENU_ รายการ",
+                    info: "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                    infoEmpty: "ไม่มีข้อมูล",
+                    infoFiltered: "(กรองจากทั้งหมด _MAX_ รายการ)",
+                    zeroRecords: "ไม่พบข้อมูลที่ค้นหา",
+                    emptyTable: "ยังไม่มีข้อมูลรอบฉาย",
+                    paginate: {
+                        first: "หน้าแรก",
+                        last: "หน้าสุดท้าย",
+                        next: "ถัดไป",
+                        previous: "ก่อนหน้า"
                     }
-                },
-                { data: 'price', className: 'text-end' },
-                {
-                    data: 'id',
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 2,
-                    className: 'text-end',
-                    render: function (id, type, row) {
-                        const label = row.movie + ' @ ' + row.cinema;
-                        return '<button class="btn btn-sm btn-outline-primary btn-edit" data-id="' + id + '">' +
-                               '<i class="bi bi-pencil"></i></button> ' +
-                               '<button class="btn btn-sm btn-outline-danger btn-delete" data-id="' + id +
-                               '" data-label="' + $('<div>').text(label).html() + '">' +
-                               '<i class="bi bi-trash"></i></button>';
-                    }
-                },
-            ],
-            language: {
-                processing: "กำลังโหลด...",
-                search: "ค้นหา:",
-                lengthMenu: "แสดง _MENU_ รายการ",
-                info: "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
-                infoEmpty: "ไม่มีข้อมูล",
-                infoFiltered: "(กรองจากทั้งหมด _MAX_ รายการ)",
-                zeroRecords: "ไม่พบข้อมูลที่ค้นหา",
-                emptyTable: "ยังไม่มีข้อมูลรอบฉาย",
-                paginate: { first: "หน้าแรก", last: "หน้าสุดท้าย", next: "ถัดไป", previous: "ก่อนหน้า" }
+                }
+            });
+
+            const showtimeModal = new bootstrap.Modal('#showtimeModal');
+            const deleteModal = new bootstrap.Modal('#deleteModal');
+            const toast = new bootstrap.Toast('#appToast', {
+                delay: 4000
+            });
+
+            function showToast(message, isError = false) {
+                $('#appToast').removeClass('bg-success bg-danger')
+                    .addClass(isError ? 'bg-danger' : 'bg-success');
+                $('#toastBody').text(message);
+                toast.show();
             }
-        });
 
-        const showtimeModal = new bootstrap.Modal('#showtimeModal');
-        const deleteModal = new bootstrap.Modal('#deleteModal');
-        const toast = new bootstrap.Toast('#appToast', { delay: 4000 });
+            function clearErrors() {
+                $('#showtimeForm .form-control, #showtimeForm .form-select').removeClass('is-invalid');
+                $('#showtimeForm .invalid-feedback').text('');
+            }
 
-        function showToast(message, isError = false) {
-            $('#appToast').removeClass('bg-success bg-danger')
-                          .addClass(isError ? 'bg-danger' : 'bg-success');
-            $('#toastBody').text(message);
-            toast.show();
-        }
+            function showErrors(errors) {
+                $.each(errors, function(field, messages) {
+                    $('#' + field).addClass('is-invalid');
+                    $('.invalid-feedback[data-field="' + field + '"]').text(messages[0]);
+                });
+            }
 
-        function clearErrors() {
-            $('#showtimeForm .form-control, #showtimeForm .form-select').removeClass('is-invalid');
-            $('#showtimeForm .invalid-feedback').text('');
-        }
+            // ===== ล็อกช่องราคาโซนที่โรงที่เลือกไม่มี (เช่น 50 ที่นั่ง = ไม่มี VIP) =====
+            function lockZone(sel, field, enabled) {
+                const $input = $(sel);
+                if (enabled) {
+                    $input.prop('disabled', false).attr('placeholder', '');
+                } else {
+                    $input.prop('disabled', true).val('').removeClass('is-invalid').attr('placeholder',
+                        'โรงนี้ไม่มีโซนนี้');
+                    $('.invalid-feedback[data-field="' + field + '"]').text('');
+                }
+            }
 
-        function showErrors(errors) {
-            $.each(errors, function (field, messages) {
-                $('#' + field).addClass('is-invalid');
-                $('.invalid-feedback[data-field="' + field + '"]').text(messages[0]);
-            });
-        }
+            function applyZoneLock() {
+                const zones = ($('#cinema_id option:selected').attr('data-zones') || '').split(',').filter(Boolean);
+                const noCinema = !$('#cinema_id').val();
+                // ยังไม่เลือกโรง = เปิดไว้ก่อน; เลือกแล้ว = เปิดเฉพาะโซนที่โรงนั้นมี (ธรรมดาเปิดเสมอ)
+                lockZone('#price_premium', 'price_premium', noCinema || zones.indexOf('premium') !== -1);
+                lockZone('#price_vip', 'price_vip', noCinema || zones.indexOf('vip') !== -1);
+            }
+            $('#cinema_id').on('change', applyZoneLock);
 
-        // ===== เปิด Modal เพิ่ม =====
-        $('#btnAdd').on('click', function () {
-            clearErrors();
-            $('#showtimeForm')[0].reset();
-            $('#showtime_id').val('');
-            $('#showtimeModalLabel').text('เพิ่มรอบฉาย');
-            showtimeModal.show();
-        });
-
-        // ===== เปิด Modal แก้ไข (ดึงข้อมูลผ่าน AJAX) =====
-        $('#showtimesTable').on('click', '.btn-edit', function () {
-            const id = $(this).data('id');
-            clearErrors();
-            $.get('/showtimes/' + id, function (s) {
-                $('#showtime_id').val(s.id);
-                $('#movie_id').val(s.movie_id);
-                $('#cinema_id').val(s.cinema_id);
-                $('#show_time').val(s.show_time);
-                $('#price').val(s.price);
-                $('#showtimeModalLabel').text('แก้ไขรอบฉาย');
+            // ===== เปิด Modal เพิ่ม =====
+            $('#btnAdd').on('click', function() {
+                clearErrors();
+                $('#showtimeForm')[0].reset();
+                showTimePicker.clear();
+                $('#showtime_id').val('');
+                applyZoneLock();
+                $('#showtimeModalLabel').text('เพิ่มรอบฉาย');
                 showtimeModal.show();
-            }).fail(function () {
-                showToast('ไม่พบข้อมูลรอบฉาย', true);
+            });
+
+            // ===== เปิด Modal แก้ไข (ดึงข้อมูลผ่าน AJAX) =====
+            $('#showtimesTable').on('click', '.btn-edit', function() {
+                const id = $(this).data('id');
+                clearErrors();
+                $.get('/showtimes/' + id, function(s) {
+                    $('#showtime_id').val(s.id);
+                    $('#movie_id').val(s.movie_id);
+                    $('#cinema_id').val(s.cinema_id);
+                    showTimePicker.setDate(s.show_time, true);
+                    $('#price').val(s.price);
+                    $('#price_premium').val(s.price_premium);
+                    $('#price_vip').val(s.price_vip);
+                    applyZoneLock();
+                    $('#showtimeModalLabel').text('แก้ไขรอบฉาย');
+                    showtimeModal.show();
+                }).fail(function() {
+                    showToast('ไม่พบข้อมูลรอบฉาย', true);
+                });
+            });
+
+            // ===== บันทึก (เพิ่ม/แก้ไข) ผ่าน AJAX =====
+            $('#showtimeForm').on('submit', function(e) {
+                e.preventDefault();
+                clearErrors();
+
+                const id = $('#showtime_id').val();
+                const isEdit = !!id;
+                const url = isEdit ? '/showtimes/' + id : '/showtimes';
+                const method = isEdit ? 'PUT' : 'POST';
+
+                const data = {
+                    movie_id: $('#movie_id').val(),
+                    cinema_id: $('#cinema_id').val(),
+                    show_time: $('#show_time').val(),
+                    price: $('#price').val(),
+                    price_premium: $('#price_premium').val(),
+                    price_vip: $('#price_vip').val(),
+                };
+
+                $('#btnSave').prop('disabled', true);
+
+                $.ajax({
+                        url: url,
+                        method: method,
+                        data: data
+                    })
+                    .done(function(res) {
+                        showtimeModal.hide();
+                        table.ajax.reload(null, false);
+                        showToast(res.message);
+                    })
+                    .fail(function(xhr) {
+                        if (xhr.status === 422) {
+                            showErrors(xhr.responseJSON.errors);
+                        } else {
+                            showToast('เกิดข้อผิดพลาด กรุณาลองใหม่', true);
+                        }
+                    })
+                    .always(function() {
+                        $('#btnSave').prop('disabled', false);
+                    });
+            });
+
+            // ===== เปิด Modal ลบ =====
+            $('#showtimesTable').on('click', '.btn-delete', function() {
+                $('#delete_id').val($(this).data('id'));
+                $('#deleteLabel').text($(this).data('label'));
+                deleteModal.show();
+            });
+
+            // ===== ยืนยันลบ (soft delete) ผ่าน AJAX =====
+            $('#btnConfirmDelete').on('click', function() {
+                const id = $('#delete_id').val();
+                $(this).prop('disabled', true);
+
+                $.ajax({
+                        url: '/showtimes/' + id,
+                        method: 'DELETE'
+                    })
+                    .done(function(res) {
+                        deleteModal.hide();
+                        table.ajax.reload(null, false);
+                        showToast(res.message);
+                    })
+                    .fail(function() {
+                        showToast('ลบไม่สำเร็จ กรุณาลองใหม่', true);
+                    })
+                    .always(function() {
+                        $('#btnConfirmDelete').prop('disabled', false);
+                    });
             });
         });
-
-        // ===== บันทึก (เพิ่ม/แก้ไข) ผ่าน AJAX =====
-        $('#showtimeForm').on('submit', function (e) {
-            e.preventDefault();
-            clearErrors();
-
-            const id = $('#showtime_id').val();
-            const isEdit = !!id;
-            const url = isEdit ? '/showtimes/' + id : '/showtimes';
-            const method = isEdit ? 'PUT' : 'POST';
-
-            const data = {
-                movie_id: $('#movie_id').val(),
-                cinema_id: $('#cinema_id').val(),
-                show_time: $('#show_time').val(),
-                price: $('#price').val(),
-            };
-
-            $('#btnSave').prop('disabled', true);
-
-            $.ajax({ url: url, method: method, data: data })
-                .done(function (res) {
-                    showtimeModal.hide();
-                    table.ajax.reload(null, false);
-                    showToast(res.message);
-                })
-                .fail(function (xhr) {
-                    if (xhr.status === 422) {
-                        showErrors(xhr.responseJSON.errors);
-                    } else {
-                        showToast('เกิดข้อผิดพลาด กรุณาลองใหม่', true);
-                    }
-                })
-                .always(function () {
-                    $('#btnSave').prop('disabled', false);
-                });
-        });
-
-        // ===== เปิด Modal ลบ =====
-        $('#showtimesTable').on('click', '.btn-delete', function () {
-            $('#delete_id').val($(this).data('id'));
-            $('#deleteLabel').text($(this).data('label'));
-            deleteModal.show();
-        });
-
-        // ===== ยืนยันลบ (soft delete) ผ่าน AJAX =====
-        $('#btnConfirmDelete').on('click', function () {
-            const id = $('#delete_id').val();
-            $(this).prop('disabled', true);
-
-            $.ajax({ url: '/showtimes/' + id, method: 'DELETE' })
-                .done(function (res) {
-                    deleteModal.hide();
-                    table.ajax.reload(null, false);
-                    showToast(res.message);
-                })
-                .fail(function () {
-                    showToast('ลบไม่สำเร็จ กรุณาลองใหม่', true);
-                })
-                .always(function () {
-                    $('#btnConfirmDelete').prop('disabled', false);
-                });
-        });
-    });
-</script>
+    </script>
 @endpush

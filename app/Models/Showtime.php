@@ -15,12 +15,16 @@ class Showtime extends Model
         'movie_id',
         'cinema_id',
         'show_time',
-        'price',
+        'price',          // โซนธรรมดา
+        'price_premium',  // โซนพรีเมียม
+        'price_vip',      // โซน VIP
     ];
 
     protected $casts = [
         'show_time' => 'datetime',
         'price' => 'decimal:2',
+        'price_premium' => 'decimal:2',
+        'price_vip' => 'decimal:2',
     ];
 
     public function movie(): BelongsTo

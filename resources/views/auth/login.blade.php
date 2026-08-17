@@ -5,7 +5,7 @@
 @section('content')
     <h2 class="h5 mb-4 text-center">เข้าสู่ระบบ</h2>
 
-    <form method="POST" action="{{ route('login') }}">
+    <form method="POST" action="{{ route('login') }}" autocomplete="off">
         @csrf
 
         <div class="mb-3">
@@ -33,7 +33,7 @@
 
         <div class="d-grid">
             <button type="submit" class="btn btn-primary">
-                <i class="bi bi-box-arrow-in-right"></i> เข้าสู่ระบบ
+                เข้าสู่ระบบ
             </button>
         </div>
     </form>

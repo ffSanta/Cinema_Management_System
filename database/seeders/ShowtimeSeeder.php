@@ -28,6 +28,8 @@ class ShowtimeSeeder extends Seeder
                 'cinema_id' => $cinema->id,
                 'show_time' => $base->copy()->addHours($i * 4),
                 'price' => 250,
+                'price_premium' => 400,
+                'price_vip' => 750,
             ]);
         }
     }

@@ -118,13 +118,13 @@ class MovieController extends Controller
     private function validatedData(Request $request): array
     {
         $validated = $request->validate([
-            'title' => ['required', 'string', 'max:20'],
+            'title' => ['required', 'string', 'max:255'],
             'duration_mins' => ['required', 'integer', 'min:1', 'max:1000'],
             'synopsis' => ['required', 'string', 'max:100'],
             'poster_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ], [
             'title.required' => 'กรุณากรอกชื่อเรื่อง',
-            'title.max' => 'ชื่อเรื่องต้องไม่เกิน 20 ตัวอักษร',
+            'title.max' => 'ชื่อเรื่องต้องไม่เกิน 255 ตัวอักษร',
             'duration_mins.required' => 'กรุณากรอกความยาว',
             'duration_mins.integer' => 'ความยาวต้องเป็นตัวเลข',
             'duration_mins.min' => 'ความยาวต้องมากกว่า 0 นาที',

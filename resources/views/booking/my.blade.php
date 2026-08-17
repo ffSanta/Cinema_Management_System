@@ -3,14 +3,23 @@
 @section('title', 'ประวัติการจอง')
 
 @push('styles')
-<style>
-    #myBookingsTable td.wrap-cell { white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
-    #myBookingsTable ul.dtr-details > li { white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
-</style>
+    <style>
+        #myBookingsTable td.wrap-cell {
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        #myBookingsTable ul.dtr-details>li {
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+    </style>
 @endpush
 
 @section('content')
-    <h2 class="mb-4"><i class="bi bi-journal-check"></i> ประวัติการจองของฉัน</h2>
+    <h2 class="mb-4"> ประวัติการจองของฉัน</h2>
 
     <div class="card shadow-sm">
         <div class="card-body">
@@ -43,9 +52,8 @@
                                 @if ($booking->trashed())
                                     <span class="text-muted">-</span>
                                 @else
-                                    <button class="btn btn-sm btn-outline-danger btn-cancel"
-                                            data-id="{{ $booking->id }}"
-                                            data-info="{{ ($booking->showtime->movie->title ?? '-') . ' ที่นั่ง ' . $booking->seat_number }}">
+                                    <button class="btn btn-sm btn-outline-danger btn-cancel" data-id="{{ $booking->id }}"
+                                        data-info="{{ ($booking->showtime->movie->title ?? '-') . ' ที่นั่ง ' . $booking->seat_number }}">
                                         <i class="bi bi-x-circle"></i> ยกเลิก
                                     </button>
                                 @endif
@@ -91,67 +99,83 @@
 @endsection
 
 @push('scripts')
-<script>
-    $(function () {
-        const table = $('#myBookingsTable').DataTable({
-            responsive: true,
-            order: [],
-            columnDefs: [
-                { responsivePriority: 1, targets: 0 },
-                { responsivePriority: 2, targets: 5 },
-                { orderable: false, targets: 5 },
-            ],
-            language: {
-                search: "ค้นหา:",
-                lengthMenu: "แสดง _MENU_ รายการ",
-                info: "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
-                infoEmpty: "ไม่มีข้อมูล",
-                emptyTable: "ยังไม่มีการจอง",
-                zeroRecords: "ไม่พบข้อมูลที่ค้นหา",
-                paginate: { first: "หน้าแรก", last: "หน้าสุดท้าย", next: "ถัดไป", previous: "ก่อนหน้า" }
+    <script>
+        $(function() {
+            const table = $('#myBookingsTable').DataTable({
+                responsive: true,
+                order: [],
+                columnDefs: [{
+                        responsivePriority: 1,
+                        targets: 0
+                    },
+                    {
+                        responsivePriority: 2,
+                        targets: 5
+                    },
+                    {
+                        orderable: false,
+                        targets: 5
+                    },
+                ],
+                language: {
+                    search: "ค้นหา:",
+                    lengthMenu: "แสดง _MENU_ รายการ",
+                    info: "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                    infoEmpty: "ไม่มีข้อมูล",
+                    emptyTable: "ยังไม่มีการจอง",
+                    zeroRecords: "ไม่พบข้อมูลที่ค้นหา",
+                    paginate: {
+                        first: "หน้าแรก",
+                        last: "หน้าสุดท้าย",
+                        next: "ถัดไป",
+                        previous: "ก่อนหน้า"
+                    }
+                }
+            });
+
+            const cancelModal = new bootstrap.Modal('#cancelModal');
+            const toast = new bootstrap.Toast('#appToast', {
+                delay: 3000
+            });
+            let currentRow = null;
+            let currentId = null;
+
+            function showToast(message, isError = false) {
+                $('#appToast').removeClass('bg-success bg-danger')
+                    .addClass(isError ? 'bg-danger' : 'bg-success');
+                $('#toastBody').text(message);
+                toast.show();
             }
-        });
 
-        const cancelModal = new bootstrap.Modal('#cancelModal');
-        const toast = new bootstrap.Toast('#appToast', { delay: 3000 });
-        let currentRow = null;
-        let currentId = null;
+            // เปิด modal ยืนยัน
+            $('#myBookingsTable').on('click', '.btn-cancel', function() {
+                currentId = $(this).data('id');
+                currentRow = $(this).closest('tr');
+                $('#cancelInfo').text($(this).data('info'));
+                cancelModal.show();
+            });
 
-        function showToast(message, isError = false) {
-            $('#appToast').removeClass('bg-success bg-danger')
-                          .addClass(isError ? 'bg-danger' : 'bg-success');
-            $('#toastBody').text(message);
-            toast.show();
-        }
+            // ยืนยันยกเลิก (soft delete ผ่าน AJAX)
+            $('#btnConfirmCancel').on('click', function() {
+                $(this).prop('disabled', true);
 
-        // เปิด modal ยืนยัน
-        $('#myBookingsTable').on('click', '.btn-cancel', function () {
-            currentId = $(this).data('id');
-            currentRow = $(this).closest('tr');
-            $('#cancelInfo').text($(this).data('info'));
-            cancelModal.show();
-        });
-
-        // ยืนยันยกเลิก (soft delete ผ่าน AJAX)
-        $('#btnConfirmCancel').on('click', function () {
-            $(this).prop('disabled', true);
-
-            $.ajax({
-                url: '/booking/' + currentId + '/cancel',
-                method: 'DELETE',
-            }).done(function (res) {
-                cancelModal.hide();
-                // อัปเดตแถว: สถานะ → ยกเลิกแล้ว, เอาปุ่มออก
-                currentRow.find('td').eq(4).html('<span class="badge bg-secondary">ยกเลิกแล้ว</span>');
-                currentRow.find('td').eq(5).html('<span class="text-muted">-</span>');
-                table.row(currentRow).invalidate('dom').draw(false);
-                showToast(res.message);
-            }).fail(function () {
-                showToast('ยกเลิกไม่สำเร็จ กรุณาลองใหม่', true);
-            }).always(function () {
-                $('#btnConfirmCancel').prop('disabled', false);
+                $.ajax({
+                    url: '/booking/' + currentId + '/cancel',
+                    method: 'DELETE',
+                }).done(function(res) {
+                    cancelModal.hide();
+                    // อัปเดตแถว: สถานะ → ยกเลิกแล้ว, เอาปุ่มออก
+                    currentRow.find('td').eq(4).html(
+                        '<span class="badge bg-secondary">ยกเลิกแล้ว</span>');
+                    currentRow.find('td').eq(5).html('<span class="text-muted">-</span>');
+                    table.row(currentRow).invalidate('dom').draw(false);
+                    showToast(res.message);
+                }).fail(function() {
+                    showToast('ยกเลิกไม่สำเร็จ กรุณาลองใหม่', true);
+                }).always(function() {
+                    $('#btnConfirmCancel').prop('disabled', false);
+                });
             });
         });
-    });
-</script>
+    </script>
 @endpush
