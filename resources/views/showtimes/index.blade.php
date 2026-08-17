@@ -171,7 +171,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
     <script>
         $(function() {
-            // date picker ภาษาไทย (flatpickr locale th) — เลือกได้ตั้งแต่วันนี้
+            // date picker ภาษาไทย (flatpickr locale th) — เลือกได้ตั้งแต่เวลาปัจจุบัน (ห้ามย้อนหลัง)
             const showTimePicker = flatpickr('#show_time', {
                 locale: 'th',
                 enableTime: true,
