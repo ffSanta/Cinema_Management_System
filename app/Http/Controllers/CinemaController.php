@@ -76,6 +76,13 @@ class CinemaController extends Controller
      */
     public function destroy(Cinema $cinema): JsonResponse
     {
+        // ลบไม่ได้ถ้ามีรอบฉายของโรงนี้ที่ยังมีการจอง active (ต้องยกเลิกการจองก่อน)
+        if ($cinema->showtimes()->whereHas('bookings', fn ($q) => $q->where('status', 'booked'))->exists()) {
+            return response()->json([
+                'message' => 'ลบไม่ได้ — โรงภาพยนตร์นี้มีรอบฉายที่ถูกจองอยู่ ต้องยกเลิกการจองก่อน',
+            ], 422);
+        }
+
         $cinema->delete();
 
         return response()->json([

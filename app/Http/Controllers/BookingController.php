@@ -132,8 +132,14 @@ class BookingController extends Controller
      */
     public function myBookings(Request $request)
     {
+        // โหลด showtime/movie/cinema แบบ withTrashed ด้วย — ถ้าถูกลบไปแล้ว (soft delete)
+        // ประวัติจะยังแสดงชื่อหนัง/โรง/รอบฉายไว้ ไม่ขึ้น "-"
         $bookings = Booking::withTrashed()
-            ->with(['showtime.movie', 'showtime.cinema'])
+            ->with([
+                'showtime' => fn ($q) => $q->withTrashed(),
+                'showtime.movie' => fn ($q) => $q->withTrashed(),
+                'showtime.cinema' => fn ($q) => $q->withTrashed(),
+            ])
             ->where('user_id', $request->user()->id)
             ->latest()
             ->get();

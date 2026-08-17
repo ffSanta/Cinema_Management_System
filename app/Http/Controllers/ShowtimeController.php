@@ -109,6 +109,13 @@ class ShowtimeController extends Controller
      */
     public function destroy(Showtime $showtime): JsonResponse
     {
+        // ลบไม่ได้ถ้ายังมีการจองที่ active (ต้องยกเลิกการจองก่อน)
+        if ($showtime->bookings()->where('status', 'booked')->exists()) {
+            return response()->json([
+                'message' => 'ลบไม่ได้ — รอบฉายนี้มีการจองอยู่ ต้องยกเลิกการจองก่อน',
+            ], 422);
+        }
+
         $showtime->delete();
 
         return response()->json(['message' => 'ลบรอบฉายเรียบร้อยแล้ว']);
