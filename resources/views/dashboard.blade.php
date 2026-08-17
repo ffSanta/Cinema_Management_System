@@ -60,6 +60,46 @@
             word-break: break-word;
         }
 
+        /* ปุ่มกดเล่นตัวอย่างหนัง (ทับ thumbnail ก่อนโหลด iframe) */
+        .trailer-play {
+            border: 0;
+            padding: 0;
+            cursor: pointer;
+            background-color: #000;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .trailer-play::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, .35);
+            transition: background .2s ease;
+        }
+
+        .trailer-play:hover::after,
+        .trailer-play:focus::after {
+            background: rgba(0, 0, 0, .15);
+        }
+
+        .trailer-play .yt-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            color: #fff;
+            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .6));
+            transition: transform .2s ease, color .2s ease;
+            z-index: 1;
+        }
+
+        .trailer-play:hover .yt-icon {
+            transform: translate(-50%, -50%) scale(1.12);
+            color: #ff0000;
+        }
+
         /* จอสัมผัส (ไม่มี hover) — โชว์ overlay จางๆ ให้เห็นปุ่มได้ */
         @media (hover: none) {
             .poster-overlay {
@@ -92,7 +132,8 @@
                 <div class="col">
                     <div class="movie-card h-100" tabindex="0" data-title="{{ $movie->title }}"
                         data-synopsis="{{ $movie->synopsis }}" data-poster="{{ $movie->poster_url }}"
-                        data-duration="{{ $movie->duration_mins }}" data-date="{{ $movie->created_at->format('d/m/Y') }}">
+                        data-duration="{{ $movie->duration_mins }}" data-date="{{ $movie->created_at->format('d/m/Y') }}"
+                        data-trailer="{{ $movie->youtube_embed_url }}" data-ytid="{{ $movie->youtube_id }}">
                         <div class="poster-wrap">
                             <img src="{{ $movie->poster_url }}" alt="{{ $movie->title }}" loading="lazy">
                             <div class="poster-overlay">
@@ -139,6 +180,12 @@
                             <p id="dSynopsis" class="mb-0" style="white-space:pre-line; word-break:break-word;"></p>
                         </div>
                     </div>
+
+                    {{-- ===== ตัวอย่างหนัง (YouTube) — แสดงเมื่อมีลิงก์เท่านั้น ===== --}}
+                    <div id="dTrailerWrap" class="mt-4 d-none">
+                        <h6 class="fw-bold mb-2"> ตัวอย่างหนัง</h6>
+                        <div id="dTrailerBox" class="ratio ratio-16x9 rounded overflow-hidden bg-dark"></div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
@@ -152,6 +199,14 @@
     <script>
         $(function() {
             const detailModal = new bootstrap.Modal('#detailModal');
+            const $trailerWrap = $('#dTrailerWrap');
+            const $trailerBox = $('#dTrailerBox');
+
+            // ล้าง iframe → หยุดเล่นวิดีโอ + ซ่อนบล็อกตัวอย่าง
+            function resetTrailer() {
+                $trailerBox.empty().removeData('embed');
+                $trailerWrap.addClass('d-none');
+            }
 
             // คลิก/แตะที่การ์ด (รูปหรือปุ่ม) → เปิดรายละเอียด
             $('.movie-card').on('click', function() {
@@ -161,8 +216,37 @@
                 $('#dSynopsis').text($c.data('synopsis') || '-');
                 $('#dDuration').text($c.data('duration'));
                 $('#dDate').text($c.data('date'));
+
+                // ตัวอย่างหนัง: แสดงปุ่มกดเล่น (ทับ thumbnail) เฉพาะเมื่อมีลิงก์
+                const embed = $c.data('trailer');
+                const ytid = $c.data('ytid');
+                if (embed) {
+                    $trailerBox.data('embed', embed).html(
+                        '<button type="button" class="trailer-play" ' +
+                        'style="background-image:url(https://img.youtube.com/vi/' + ytid +
+                        '/hqdefault.jpg)" ' +
+                        'aria-label="เล่นตัวอย่างหนัง">' +
+                        '<i class="bi bi-play-circle-fill yt-icon"></i></button>');
+                    $trailerWrap.removeClass('d-none');
+                } else {
+                    resetTrailer();
+                }
+
                 detailModal.show();
             });
+
+            // กดปุ่มเล่น → โหลด iframe แล้วเล่นอัตโนมัติ
+            $trailerBox.on('click', '.trailer-play', function() {
+                const embed = $trailerBox.data('embed');
+                if (!embed) return;
+                $trailerBox.html(
+                    '<iframe src="' + embed + '?autoplay=1&rel=0" title="ตัวอย่างหนัง" ' +
+                    'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
+                    'allowfullscreen></iframe>');
+            });
+
+            // ปิด modal → หยุดวิดีโอ (กันเสียงเล่นต่อหลังปิด)
+            $('#detailModal').on('hidden.bs.modal', resetTrailer);
         });
     </script>
 @endpush

@@ -107,6 +107,15 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="trailer_url" class="form-label">
+                                ลิงก์ตัวอย่างหนัง (YouTube) <small class="text-muted">(ไม่บังคับ)</small>
+                            </label>
+                            <input type="url" class="form-control" id="trailer_url" name="trailer_url"
+                                placeholder="https://www.youtube.com/watch?v=...">
+                            <div class="invalid-feedback" data-field="trailer_url"></div>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="poster_image" class="form-label">
                                 โปสเตอร์ <small class="text-muted">(jpg/png/webp, ไม่เกิน 2MB)</small>
                             </label>
@@ -344,6 +353,7 @@
                     $('#title').val(movie.title);
                     $('#duration_mins').val(movie.duration_mins);
                     $('#synopsis').val(movie.synopsis);
+                    $('#trailer_url').val(movie.trailer_url || '');
                     $('#poster_image').val(''); // ล้างไฟล์ที่อาจค้างไว้
                     // โชว์โปสเตอร์เดิม (ถ้ามี)
                     if (movie.has_poster) {
@@ -379,6 +389,7 @@
                 formData.append('title', $('#title').val());
                 formData.append('duration_mins', $('#duration_mins').val());
                 formData.append('synopsis', $('#synopsis').val());
+                formData.append('trailer_url', $('#trailer_url').val());
 
                 const fileInput = $('#poster_image')[0];
                 if (fileInput.files.length > 0) {

@@ -66,6 +66,7 @@ class MovieController extends Controller
             'title' => $movie->title,
             'duration_mins' => $movie->duration_mins,
             'synopsis' => $movie->synopsis,
+            'trailer_url' => $movie->trailer_url,
             'poster_url' => $movie->poster_url,
             'has_poster' => (bool) $movie->poster_image,
         ]);
@@ -128,6 +129,8 @@ class MovieController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'duration_mins' => ['required', 'integer', 'min:1', 'max:1000'],
             'synopsis' => ['required', 'string', 'max:100'],
+            // ลิงก์ตัวอย่างหนัง YouTube — ไม่บังคับ แต่ถ้ากรอกต้องเป็นลิงก์ YouTube ที่ถูกต้อง
+            'trailer_url' => ['nullable', 'string', 'max:255', 'regex:~^https?://(?:www\.)?(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/)|youtu\.be/)[A-Za-z0-9_-]{11}~i'],
             'poster_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ], [
             'title.required' => 'กรุณากรอกชื่อเรื่อง',
@@ -137,12 +140,14 @@ class MovieController extends Controller
             'duration_mins.min' => 'ความยาวต้องมากกว่า 0 นาที',
             'synopsis.required' => 'กรุณากรอกเรื่องย่อ',
             'synopsis.max' => 'เรื่องย่อต้องไม่เกิน 60 ตัวอักษร',
+            'trailer_url.regex' => 'กรุณากรอกลิงก์ YouTube ที่ถูกต้อง',
+            'trailer_url.max' => 'ลิงก์ยาวเกินไป',
             'poster_image.image' => 'ไฟล์ต้องเป็นรูปภาพเท่านั้น',
             'poster_image.mimes' => 'รองรับเฉพาะไฟล์ jpg, png, webp',
             'poster_image.max' => 'ขนาดรูปต้องไม่เกิน 2 MB',
         ]);
 
         // คืนเฉพาะ field ข้อความ (poster_image เป็นไฟล์ จัดการแยก)
-        return array_intersect_key($validated, array_flip(['title', 'duration_mins', 'synopsis']));
+        return array_intersect_key($validated, array_flip(['title', 'duration_mins', 'synopsis', 'trailer_url']));
     }
 }
