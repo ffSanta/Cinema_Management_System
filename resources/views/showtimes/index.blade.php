@@ -167,30 +167,6 @@
 @endsection
 
 @push('scripts')
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-<script>
-    $(function () {
-        const table = $('#showtimesTable').DataTable({
-            processing: true,
-            responsive: true,
-            autoWidth: false,
-            ajax: "{{ route('showtimes.data') }}",
-            order: [[3, 'asc']], // เรียงตามเวลาฉาย จากใกล้ที่สุดขึ้นก่อน
-            columns: [
-                { data: 'id' },
-                { data: 'movie', className: 'wrap-cell', responsivePriority: 1,
-                  render: function (t) { return $('<div>').text(t || '').html(); } },
-                { data: 'cinema', className: 'wrap-cell',
-                  render: function (t) { return $('<div>').text(t || '').html(); } },
-                {
-                    data: 'show_time',
-                    // แสดงข้อความ display แต่เรียงลำดับด้วย timestamp (กันเรียงตาม string เพี้ยน)
-                    render: function (data, type) {
-                        return (type === 'sort' || type === 'type') ? data.timestamp : data.display;
-=======
->>>>>>> feature/showtime-min-date
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
     <script>
@@ -277,10 +253,6 @@
                         last: "หน้าสุดท้าย",
                         next: "ถัดไป",
                         previous: "ก่อนหน้า"
-<<<<<<< HEAD
-=======
->>>>>>> 4b341c5 (fix calendar)
->>>>>>> feature/showtime-min-date
                     }
                 }
             });
