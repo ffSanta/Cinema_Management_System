@@ -19,8 +19,8 @@ class ShowtimeController extends Controller
         $movies = Movie::orderBy('title')->get(['id', 'title']);
         $cinemas = Cinema::orderBy('name')->get(['id', 'name', 'total_seats']);
 
-        // min ของ date picker = พรุ่งนี้ → เลือกวันนี้/ก่อนหน้าไม่ได้
-        $minShowTime = now()->addDay()->format('Y-m-d');
+        // min ของ date picker = วันนี้ → เลือกวันนี้ได้ แต่เลือกก่อนวันนี้ไม่ได้
+        $minShowTime = now()->format('Y-m-d');
 
         return view('showtimes.index', compact('movies', 'cinemas', 'minShowTime'));
     }

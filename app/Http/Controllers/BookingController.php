@@ -164,6 +164,55 @@ class BookingController extends Controller
     }
 
     /**
+     * กู้คืนการจองที่ยกเลิกไปแล้ว — คืนได้เฉพาะเมื่อที่นั่งยังว่างและรอบยังไม่ฉาย
+     */
+    public function restore(Request $request, int $booking): JsonResponse
+    {
+        $booking = Booking::withTrashed()->findOrFail($booking);
+
+        // เฉพาะเจ้าของการจองเท่านั้น
+        if ($booking->user_id !== $request->user()->id) {
+            abort(403, 'ไม่สามารถกู้คืนการจองของผู้อื่นได้');
+        }
+
+        // ต้องเป็นการจองที่ถูกยกเลิก (soft delete) ไปแล้วจริง ๆ
+        if (! $booking->trashed()) {
+            return response()->json(['message' => 'การจองนี้ยังไม่ได้ถูกยกเลิก'], 422);
+        }
+
+        // รอบฉาย/โรง/หนัง ต้องยังอยู่ (ไม่ถูกลบ) จึงจะกู้คืนได้
+        $showtime = Showtime::find($booking->showtime_id);
+        if (! $showtime) {
+            return response()->json(['message' => 'ไม่สามารถกู้คืนได้ เนื่องจากรอบฉายนี้ถูกลบไปแล้ว'], 422);
+        }
+
+        // รอบฉายต้องยังไม่ผ่านไป
+        if ($showtime->show_time < now()) {
+            return response()->json(['message' => 'ไม่สามารถกู้คืนได้ เนื่องจากรอบฉายนี้ผ่านไปแล้ว'], 422);
+        }
+
+        // ทำใน transaction + ล็อคแถว กันที่นั่งชนกับคนที่จองระหว่างนั้น
+        return DB::transaction(function () use ($booking, $showtime) {
+            $taken = Booking::where('showtime_id', $showtime->id)
+                ->where('status', 'booked')
+                ->where('seat_number', $booking->seat_number)
+                ->lockForUpdate()
+                ->exists();
+
+            if ($taken) {
+                return response()->json([
+                    'message' => 'ที่นั่ง ' . $booking->seat_number . ' ถูกจองไปแล้ว ไม่สามารถกู้คืนได้',
+                ], 422);
+            }
+
+            $booking->restore();
+            $booking->update(['status' => 'booked']);
+
+            return response()->json(['message' => 'กู้คืนการจองเรียบร้อยแล้ว']);
+        });
+    }
+
+    /**
      * สร้างผังที่นั่งจากจำนวนที่นั่งทั้งหมด → ['A' => ['A1'..'A10'], 'B' => [...], ...]
      */
     /**

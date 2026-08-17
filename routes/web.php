@@ -68,4 +68,5 @@ Route::middleware(['auth', 'user'])->group(function () {
     Route::get('/booking/{showtime}/seats', [BookingController::class, 'selectSeats'])->name('booking.seats');
     Route::post('/booking/{showtime}', [BookingController::class, 'store'])->name('booking.store');
     Route::delete('/booking/{booking}/cancel', [BookingController::class, 'cancel'])->name('booking.cancel');
+    Route::patch('/booking/{booking}/restore', [BookingController::class, 'restore'])->name('booking.restore');
 });
