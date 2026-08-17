@@ -99,6 +99,13 @@ class MovieController extends Controller
      */
     public function destroy(Movie $movie): JsonResponse
     {
+        // ลบไม่ได้ถ้ามีรอบฉายของหนังนี้ที่ยังมีการจอง active (ต้องยกเลิกการจองก่อน)
+        if ($movie->showtimes()->whereHas('bookings', fn($q) => $q->where('status', 'booked'))->exists()) {
+            return response()->json([
+                'message' => 'ลบไม่ได้ — ภาพยนตร์นี้มีรอบฉายที่ถูกจองอยู่',
+            ], 422);
+        }
+
         // ลบไฟล์โปสเตอร์ออกจาก storage/app/public (สะท้อนไปที่ public/storage ผ่าน symlink)
         if ($movie->poster_image) {
             Storage::disk('public')->delete($movie->poster_image);

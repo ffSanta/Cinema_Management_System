@@ -293,8 +293,10 @@
                     deleteModal.hide();
                     table.ajax.reload(null, false);
                     showToast(res.message);
-                }).fail(function() {
-                    showToast('ลบไม่สำเร็จ กรุณาลองใหม่', true);
+                }).fail(function(xhr) {
+                    deleteModal.hide();
+                    showToast((xhr.status === 422 && xhr.responseJSON) ? xhr.responseJSON.message :
+                        'ลบไม่สำเร็จ กรุณาลองใหม่', true);
                 }).always(function() {
                     $('#btnConfirmDelete').prop('disabled', false);
                 });

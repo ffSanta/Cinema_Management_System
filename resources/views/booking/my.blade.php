@@ -37,9 +37,9 @@
                 <tbody>
                     @foreach ($bookings as $booking)
                         <tr>
-                            <td class="wrap-cell">{{ $booking->showtime->movie->title ?? '-' }}</td>
-                            <td class="wrap-cell">{{ $booking->showtime->cinema->name ?? '-' }}</td>
-                            <td>{{ optional($booking->showtime?->show_time)->format('d/m/Y H:i') ?? '-' }}</td>
+                            <td class="wrap-cell">{{ $booking->showtime?->movie?->title ?? '-' }}</td>
+                            <td class="wrap-cell">{{ $booking->showtime?->cinema?->name ?? '-' }}</td>
+                            <td>{{ $booking->showtime?->show_time?->format('d/m/Y H:i') ?? '-' }}</td>
                             <td><span class="badge bg-primary">{{ $booking->seat_number }}</span></td>
                             <td>
                                 @if ($booking->trashed())

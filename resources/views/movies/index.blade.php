@@ -26,7 +26,7 @@
         }
 
         /* แถวย่อย (child row) ตอนจอ < 768px ก็ต้องตัดบรรทัดข้อความยาวไม่มีเว้นวรรคด้วย
-                                   ไม่งั้น เช่น "dddd...60ตัว" จะดันแถวย่อยกว้างล้นจอ */
+                                           ไม่งั้น เช่น "dddd...60ตัว" จะดันแถวย่อยกว้างล้นจอ */
         #moviesTable ul.dtr-details {
             width: 100%;
             margin: 0;
@@ -433,8 +433,10 @@
                     deleteModal.hide();
                     table.ajax.reload(null, false);
                     showToast(res.message);
-                }).fail(function() {
-                    showToast('ลบไม่สำเร็จ กรุณาลองใหม่', true);
+                }).fail(function(xhr) {
+                    deleteModal.hide();
+                    showToast((xhr.status === 422 && xhr.responseJSON) ? xhr.responseJSON.message :
+                        'ลบไม่สำเร็จ กรุณาลองใหม่', true);
                 }).always(function() {
                     $('#btnConfirmDelete').prop('disabled', false);
                 });
