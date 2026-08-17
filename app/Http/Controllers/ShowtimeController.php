@@ -19,8 +19,14 @@ class ShowtimeController extends Controller
         $movies = Movie::orderBy('title')->get(['id', 'title']);
         $cinemas = Cinema::orderBy('name')->get(['id', 'name']);
 
+<<<<<<< HEAD
         // min ของ input = พรุ่งนี้ 00:00 → เลือกวันนี้/ก่อนหน้าไม่ได้
         $minShowTime = now()->addDay()->startOfDay()->format('Y-m-d\TH:i');
+=======
+        // min ของ date picker = เวลาปัจจุบันตามเวลาไทย (Asia/Bangkok) → เลือกเวลาที่ผ่านไปแล้วไม่ได้
+        // (app timezone เป็น UTC จึงต้องแปลงเป็นเวลาไทยก่อน ไม่งั้น min จะช้ากว่าจริง 7 ชม.)
+        $minShowTime = now('Asia/Bangkok')->format('Y-m-d H:i');
+>>>>>>> 4b341c5 (fix calendar)
 
         return view('showtimes.index', compact('movies', 'cinemas', 'minShowTime'));
     }

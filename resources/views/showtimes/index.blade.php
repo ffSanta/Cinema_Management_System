@@ -137,6 +137,7 @@
 @endsection
 
 @push('scripts')
+<<<<<<< HEAD
 <script>
     $(function () {
         const table = $('#showtimesTable').DataTable({
@@ -156,6 +157,94 @@
                     // แสดงข้อความ display แต่เรียงลำดับด้วย timestamp (กันเรียงตาม string เพี้ยน)
                     render: function (data, type) {
                         return (type === 'sort' || type === 'type') ? data.timestamp : data.display;
+=======
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/th.js"></script>
+    <script>
+        $(function() {
+            // date picker ภาษาไทย (flatpickr locale th) — เลือกได้ตั้งแต่เวลาปัจจุบัน (ห้ามย้อนหลัง)
+            const showTimePicker = flatpickr('#show_time', {
+                locale: 'th',
+                enableTime: true,
+                time_24hr: true,
+                dateFormat: 'Y-m-d H:i', // ค่าที่ส่ง server
+                altInput: true,
+                altFormat: 'j F Y เวลา H:i น.', // ที่แสดงให้ผู้ใช้ (ภาษาไทย)
+                minDate: "{{ $minShowTime }}",
+                disableMobile: true, // ใช้ flatpickr เสมอ (ไม่ใช้ native picker)
+            });
+
+            const table = $('#showtimesTable').DataTable({
+                processing: true,
+                responsive: true,
+                autoWidth: false,
+                ajax: "{{ route('showtimes.data') }}",
+                order: [
+                    [3, 'asc']
+                ], // เรียงตามเวลาฉาย จากใกล้ที่สุดขึ้นก่อน
+                columns: [{
+                        data: 'id'
+                    },
+                    {
+                        data: 'movie',
+                        className: 'wrap-cell',
+                        responsivePriority: 1,
+                        render: function(t) {
+                            return $('<div>').text(t || '').html();
+                        }
+                    },
+                    {
+                        data: 'cinema',
+                        className: 'wrap-cell',
+                        render: function(t) {
+                            return $('<div>').text(t || '').html();
+                        }
+                    },
+                    {
+                        data: 'show_time',
+                        // แสดงข้อความ display แต่เรียงลำดับด้วย timestamp (กันเรียงตาม string เพี้ยน)
+                        render: function(data, type) {
+                            return (type === 'sort' || type === 'type') ? data.timestamp : data
+                                .display;
+                        }
+                    },
+                    {
+                        data: 'price',
+                        className: 'text-end'
+                    },
+                    {
+                        data: 'id',
+                        orderable: false,
+                        searchable: false,
+                        responsivePriority: 2,
+                        className: 'text-end',
+                        render: function(id, type, row) {
+                            const label = row.movie + ' @ ' + row.cinema;
+                            return '<button class="btn btn-sm btn-outline-primary btn-edit" data-id="' +
+                                id + '">' +
+                                '<i class="bi bi-pencil"></i></button> ' +
+                                '<button class="btn btn-sm btn-outline-danger btn-delete" data-id="' +
+                                id +
+                                '" data-label="' + $('<div>').text(label).html() + '">' +
+                                '<i class="bi bi-trash"></i></button>';
+                        }
+                    },
+                ],
+                language: {
+                    processing: "กำลังโหลด...",
+                    search: "ค้นหา:",
+                    lengthMenu: "แสดง _MENU_ รายการ",
+                    info: "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+                    infoEmpty: "ไม่มีข้อมูล",
+                    infoFiltered: "(กรองจากทั้งหมด _MAX_ รายการ)",
+                    zeroRecords: "ไม่พบข้อมูลที่ค้นหา",
+                    emptyTable: "ยังไม่มีข้อมูลรอบฉาย",
+                    paginate: {
+                        first: "หน้าแรก",
+                        last: "หน้าสุดท้าย",
+                        next: "ถัดไป",
+                        previous: "ก่อนหน้า"
+>>>>>>> 4b341c5 (fix calendar)
                     }
                 },
                 { data: 'price', className: 'text-end' },
