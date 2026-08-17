@@ -50,7 +50,19 @@
                             </td>
                             <td class="text-end">
                                 @if ($booking->trashed())
-                                    <span class="text-muted">-</span>
+                                    @php
+                                        $canRestore = $booking->showtime
+                                            && ! $booking->showtime->trashed()
+                                            && $booking->showtime->show_time >= now();
+                                    @endphp
+                                    @if ($canRestore)
+                                        <button class="btn btn-sm btn-outline-success btn-restore" data-id="{{ $booking->id }}"
+                                            data-info="{{ ($booking->showtime->movie->title ?? '-') . ' ที่นั่ง ' . $booking->seat_number }}">
+                                            <i class="bi bi-arrow-counterclockwise"></i> กู้คืน
+                                        </button>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
                                 @else
                                     <button class="btn btn-sm btn-outline-danger btn-cancel" data-id="{{ $booking->id }}"
                                         data-info="{{ ($booking->showtime->movie->title ?? '-') . ' ที่นั่ง ' . $booking->seat_number }}">
@@ -81,6 +93,28 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
                     <button type="button" class="btn btn-danger" id="btnConfirmCancel">
                         <i class="bi bi-x-circle"></i> ยกเลิกการจอง
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ===== Modal ยืนยันการกู้คืน ===== --}}
+    <div class="modal fade" id="restoreModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-arrow-counterclockwise text-success"></i> ยืนยันการกู้คืน</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    ต้องการกู้คืนการจอง "<strong id="restoreInfo"></strong>" ใช่หรือไม่?
+                    <div class="text-muted small mt-2">กู้คืนได้เฉพาะเมื่อที่นั่งยังว่างและรอบฉายยังไม่ผ่านไป</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                    <button type="button" class="btn btn-success" id="btnConfirmRestore">
+                        <i class="bi bi-arrow-counterclockwise"></i> กู้คืนการจอง
                     </button>
                 </div>
             </div>
@@ -134,11 +168,14 @@
             });
 
             const cancelModal = new bootstrap.Modal('#cancelModal');
+            const restoreModal = new bootstrap.Modal('#restoreModal');
             const toast = new bootstrap.Toast('#appToast', {
                 delay: 3000
             });
             let currentRow = null;
             let currentId = null;
+            let restoreRow = null;
+            let restoreId = null;
 
             function showToast(message, isError = false) {
                 $('#appToast').removeClass('bg-success bg-danger')
@@ -174,6 +211,42 @@
                     showToast('ยกเลิกไม่สำเร็จ กรุณาลองใหม่', true);
                 }).always(function() {
                     $('#btnConfirmCancel').prop('disabled', false);
+                });
+            });
+
+            // เปิด modal ยืนยันการกู้คืน
+            $('#myBookingsTable').on('click', '.btn-restore', function() {
+                restoreId = $(this).data('id');
+                restoreRow = $(this).closest('tr');
+                $('#restoreInfo').text($(this).data('info'));
+                restoreModal.show();
+            });
+
+            // ยืนยันการกู้คืน (restore ผ่าน AJAX)
+            $('#btnConfirmRestore').on('click', function() {
+                $(this).prop('disabled', true);
+
+                $.ajax({
+                    url: '/booking/' + restoreId + '/restore',
+                    method: 'PATCH',
+                }).done(function(res) {
+                    restoreModal.hide();
+                    // อัปเดตแถว: สถานะ → จองแล้ว, เปลี่ยนปุ่มเป็น "ยกเลิก"
+                    const info = restoreRow.find('.btn-restore').data('info');
+                    restoreRow.find('td').eq(4).html(
+                        '<span class="badge bg-success">จองแล้ว</span>');
+                    restoreRow.find('td').eq(5).html(
+                        '<button class="btn btn-sm btn-outline-danger btn-cancel" data-id="' +
+                        restoreId + '" data-info="' + info + '">' +
+                        '<i class="bi bi-x-circle"></i> ยกเลิก</button>');
+                    table.row(restoreRow).invalidate('dom').draw(false);
+                    showToast(res.message);
+                }).fail(function(xhr) {
+                    restoreModal.hide();
+                    const msg = xhr.responseJSON?.message || 'กู้คืนไม่สำเร็จ กรุณาลองใหม่';
+                    showToast(msg, true);
+                }).always(function() {
+                    $('#btnConfirmRestore').prop('disabled', false);
                 });
             });
         });
