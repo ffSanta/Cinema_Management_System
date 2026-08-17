@@ -16,6 +16,7 @@ class Movie extends Model
         'duration_mins',
         'poster_image',
         'synopsis',
+        'trailer_url',
     ];
 
     /**
@@ -30,6 +31,29 @@ class Movie extends Model
 
         // placeholder ทรงโปสเตอร์ (2:3) พื้นเข้ม พร้อมชื่อหนัง
         return 'https://placehold.co/300x450/1a1a2e/e94560?text=' . rawurlencode($this->title ?? 'No Image');
+    }
+
+    /**
+     * ดึงรหัสวิดีโอ YouTube (11 ตัว) จาก trailer_url — รองรับหลายรูปแบบลิงก์
+     * (youtube.com/watch?v=, youtu.be/, /embed/, /shorts/) คืน null ถ้าไม่พบ
+     */
+    public function getYoutubeIdAttribute(): ?string
+    {
+        if (! $this->trailer_url) {
+            return null;
+        }
+
+        $pattern = '~(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})~i';
+
+        return preg_match($pattern, $this->trailer_url, $m) ? $m[1] : null;
+    }
+
+    /**
+     * URL สำหรับฝัง iframe (embed) — คืน null ถ้าไม่มีตัวอย่างหนัง
+     */
+    public function getYoutubeEmbedUrlAttribute(): ?string
+    {
+        return $this->youtube_id ? 'https://www.youtube.com/embed/' . $this->youtube_id : null;
     }
 
     public function showtimes(): HasMany
