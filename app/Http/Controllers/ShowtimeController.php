@@ -135,8 +135,8 @@ class ShowtimeController extends Controller
             'cinema_id' => ['required', 'exists:cinemas,id'],
             'show_time' => ['required', 'date'],
             'price' => ['required', 'numeric', 'min:0', 'max:999999.99'],
-            'price_premium' => [in_array('premium', $zones, true) ? 'required' : 'nullable', 'numeric', 'min:0', 'max:999999.99'],
-            'price_vip' => [in_array('vip', $zones, true) ? 'required' : 'nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'price_premium' => [in_array('premium', $zones, true) ? 'required' : 'nullable', 'numeric', 'min:0', 'max:999999.99', 'gte:price'],
+            'price_vip' => [in_array('vip', $zones, true) ? 'required' : 'nullable', 'numeric', 'min:0', 'max:999999.99', 'gte:price', 'gte:price_premium'],
         ], [
             'movie_id.required' => 'กรุณาเลือกภาพยนตร์',
             'movie_id.exists' => 'ไม่พบภาพยนตร์ที่เลือก',
@@ -150,9 +150,11 @@ class ShowtimeController extends Controller
             'price_premium.required' => 'กรุณากรอกราคาโซนพรีเมียม',
             'price_premium.numeric' => 'ราคาต้องเป็นตัวเลข',
             'price_premium.min' => 'ราคาต้องไม่ติดลบ',
+            'price_premium.gte' => 'ราคาโซนพรีเมียมต้องไม่น้อยกว่าโซนธรรมดา',
             'price_vip.required' => 'กรุณากรอกราคาโซน VIP',
             'price_vip.numeric' => 'ราคาต้องเป็นตัวเลข',
             'price_vip.min' => 'ราคาต้องไม่ติดลบ',
+            'price_vip.gte' => 'ราคาโซน VIP ต้องไม่น้อยกว่าโซนธรรมดาและพรีเมียม',
         ]);
     }
 
