@@ -53,6 +53,11 @@ class ApiClient {
           headers: await _headers(auth: auth),
           body: body == null ? null : jsonEncode(body)));
 
+  Future<dynamic> patch(String path, {Object? body, bool auth = true}) =>
+      _send(() async => _http.patch(_uri(path),
+          headers: await _headers(auth: auth),
+          body: body == null ? null : jsonEncode(body)));
+
   Future<dynamic> delete(String path, {bool auth = true}) => _send(() async =>
       _http.delete(_uri(path), headers: await _headers(auth: auth)));
 
