@@ -12,6 +12,7 @@ dependencies:
   http: ^1.2.2                    # เรียก REST API
   provider: ^6.1.2               # state management
   flutter_secure_storage: ^9.2.2 # เก็บ token อย่างปลอดภัย
+  youtube_player_iframe: ^5.2.0  # เล่นตัวอย่างหนัง YouTube (บน web = iframe จริง)
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
