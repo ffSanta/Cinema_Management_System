@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/movie.dart';
+import '../models/showtime.dart';
 import '../services/movie_service.dart';
 import '../services/showtime_service.dart';
 import '../theme/app_theme.dart';
@@ -10,7 +11,7 @@ import '../widgets/movie_card.dart';
 import '../widgets/skeletons.dart';
 import 'movie_detail_screen.dart';
 
-/// หน้ารวมภาพยนตร์ — แท็บ "กำลังฉาย" (มีรอบฉาย) / "เร็ว ๆ นี้" (ยังไม่มีรอบ)
+/// หน้ารวมภาพยนตร์ — แท็บ กำลังฉาย/เร็ว ๆ นี้ + ค้นหาตามชื่อ + กรองตามโรงภาพยนตร์
 class MoviesScreen extends StatefulWidget {
   const MoviesScreen({super.key});
 
@@ -19,8 +20,12 @@ class MoviesScreen extends StatefulWidget {
 }
 
 class _MoviesScreenState extends State<MoviesScreen> {
-  _MoviesData? _data;
+  List<Movie>? _movies;
+  List<Showtime>? _showtimes;
   Object? _error;
+
+  String _search = '';
+  int? _cinemaId; // null = ทุกโรง
 
   @override
   void initState() {
@@ -34,19 +39,61 @@ class _MoviesScreenState extends State<MoviesScreen> {
       final showtimeService = context.read<ShowtimeService>();
       final movies = await movieService.list();
       final showtimes = await showtimeService.list();
-      final nowShowingIds =
-          showtimes.map((s) => s.movieId).whereType<int>().toSet();
       if (!mounted) return;
       setState(() {
-        _data = _MoviesData(
-          movies.where((m) => nowShowingIds.contains(m.id)).toList(),
-          movies.where((m) => !nowShowingIds.contains(m.id)).toList(),
-        );
+        _movies = movies;
+        _showtimes = showtimes;
         _error = null;
       });
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
+  }
+
+  // ===== ข้อมูลช่วยกรอง =====
+  Set<int> get _nowShowingIds =>
+      (_showtimes ?? []).map((s) => s.movieId).whereType<int>().toSet();
+
+  /// รายชื่อโรง (id -> name) จากรอบฉายที่มี
+  List<MapEntry<int, String>> get _cinemas {
+    final map = <int, String>{};
+    for (final s in _showtimes ?? []) {
+      if (s.cinema != null) map[s.cinema!.id] = s.cinema!.name;
+    }
+    final list = map.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+    return list;
+  }
+
+  Set<int> _movieIdsAtCinema(int cinemaId) {
+    final ids = <int>{};
+    for (final s in _showtimes ?? []) {
+      if (s.cinema?.id == cinemaId && s.movieId != null) ids.add(s.movieId!);
+    }
+    return ids;
+  }
+
+  bool _matchSearch(Movie m) =>
+      _search.isEmpty ||
+      m.title.toLowerCase().contains(_search.toLowerCase());
+
+  List<Movie> get _nowShowing {
+    var list = _movies!.where((m) => _nowShowingIds.contains(m.id));
+    list = list.where(_matchSearch);
+    if (_cinemaId != null) {
+      final ids = _movieIdsAtCinema(_cinemaId!);
+      list = list.where((m) => ids.contains(m.id));
+    }
+    return list.toList();
+  }
+
+  List<Movie> get _comingSoon {
+    // เลือกโรงอยู่ → "เร็ว ๆ นี้" ไม่มีรอบฉายจึงไม่เข้าเงื่อนไขโรง
+    if (_cinemaId != null) return [];
+    return _movies!
+        .where((m) => !_nowShowingIds.contains(m.id))
+        .where(_matchSearch)
+        .toList();
   }
 
   @override
@@ -56,7 +103,6 @@ class _MoviesScreenState extends State<MoviesScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('ภาพยนตร์'),
-          // แถบแท็บใช้พื้นลาเวนเดอร์อ่อน ให้ต่างโทนกับแถบ title สีเข้มด้านบน
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(48),
             child: Container(
@@ -81,45 +127,102 @@ class _MoviesScreenState extends State<MoviesScreen> {
   }
 
   Widget _buildBody() {
-    if (_error != null) {
-      return ErrorState(message: '$_error', onRetry: _load);
-    }
-    if (_data == null) {
-      return const MovieGridSkeleton();
-    }
-    return TabBarView(children: [
-      _MovieGrid(
-        movies: _data!.nowShowing,
-        emptyTitle: 'ยังไม่มีหนังที่กำลังฉาย',
-        emptySubtitle: 'ดึงลงเพื่อรีเฟรช',
-        onRefresh: _load,
-      ),
-      _MovieGrid(
-        movies: _data!.comingSoon,
-        emptyTitle: 'ยังไม่มีหนังเข้าใหม่',
-        emptySubtitle: 'ดึงลงเพื่อรีเฟรช',
-        onRefresh: _load,
-      ),
-    ]);
+    if (_error != null) return ErrorState(message: '$_error', onRetry: _load);
+    if (_movies == null) return const MovieGridSkeleton();
+    return Column(
+      children: [
+        _filterBar(),
+        Expanded(
+          child: TabBarView(children: [
+            _MovieGrid(
+              movies: _nowShowing,
+              emptyTitle: _emptyTitle('ยังไม่มีหนังที่กำลังฉาย'),
+              onRefresh: _load,
+            ),
+            _MovieGrid(
+              movies: _comingSoon,
+              emptyTitle: _emptyTitle('ยังไม่มีหนังเข้าใหม่'),
+              onRefresh: _load,
+            ),
+          ]),
+        ),
+      ],
+    );
   }
-}
 
-class _MoviesData {
-  final List<Movie> nowShowing;
-  final List<Movie> comingSoon;
-  _MoviesData(this.nowShowing, this.comingSoon);
+  String _emptyTitle(String base) =>
+      (_search.isNotEmpty || _cinemaId != null) ? 'ไม่พบภาพยนตร์ที่ค้นหา' : base;
+
+  /// แถบค้นหา + ชิปกรองโรง
+  Widget _filterBar() {
+    final cinemas = _cinemas;
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      child: Column(
+        children: [
+          TextField(
+            onChanged: (v) => setState(() => _search = v),
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'ค้นหาชื่อภาพยนตร์',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _search.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () => setState(() => _search = ''),
+                    ),
+              isDense: true,
+            ),
+          ),
+          if (cinemas.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _cinemaChip(null, 'ทุกโรง'),
+                  ...cinemas.map((c) => _cinemaChip(c.key, c.value)),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _cinemaChip(int? id, String label) {
+    final selected = _cinemaId == id;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => setState(() => _cinemaId = id),
+        showCheckmark: false,
+        labelStyle: TextStyle(
+          color: selected ? Colors.white : AppColors.ink,
+          fontWeight: FontWeight.w600,
+        ),
+        selectedColor: AppColors.brand,
+        backgroundColor: AppColors.brand050,
+        side: BorderSide.none,
+      ),
+    );
+  }
 }
 
 class _MovieGrid extends StatelessWidget {
   final List<Movie> movies;
   final String emptyTitle;
-  final String emptySubtitle;
   final Future<void> Function() onRefresh;
 
   const _MovieGrid({
     required this.movies,
     required this.emptyTitle,
-    required this.emptySubtitle,
     required this.onRefresh,
   });
 
@@ -131,7 +234,7 @@ class _MovieGrid extends StatelessWidget {
           ? EmptyState(
               icon: Icons.movie_creation_outlined,
               title: emptyTitle,
-              subtitle: emptySubtitle,
+              subtitle: 'ดึงลงเพื่อรีเฟรช',
             )
           : GridView.builder(
               padding: const EdgeInsets.all(12),
