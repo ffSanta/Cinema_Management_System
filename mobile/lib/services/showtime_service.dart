@@ -1,3 +1,4 @@
+import '../models/seat_map.dart';
 import '../models/showtime.dart';
 import 'api_client.dart';
 
@@ -11,5 +12,11 @@ class ShowtimeService {
     return (data['data'] as List<dynamic>)
         .map((e) => Showtime.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  /// ผังที่นั่ง + ราคา + สถานะจอง ของรอบฉาย
+  Future<SeatMapData> seatMap(int showtimeId) async {
+    final data = await api.get('/showtimes/$showtimeId/seats', auth: false);
+    return SeatMapData.fromJson(data as Map<String, dynamic>);
   }
 }

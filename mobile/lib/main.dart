@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
+import 'services/booking_service.dart';
 import 'services/movie_service.dart';
 import 'services/showtime_service.dart';
 import 'services/token_storage.dart';
@@ -41,6 +42,7 @@ class CinemaApp extends StatelessWidget {
         Provider<AuthService>.value(value: authService),
         Provider<MovieService>(create: (_) => MovieService(apiClient)),
         Provider<ShowtimeService>(create: (_) => ShowtimeService(apiClient)),
+        Provider<BookingService>(create: (_) => BookingService(apiClient)),
         ChangeNotifierProvider<AuthProvider>(
           create: (_) => AuthProvider(
             authService: authService,

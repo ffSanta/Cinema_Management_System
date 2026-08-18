@@ -5,6 +5,7 @@ import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../models/movie.dart';
 import '../models/showtime.dart';
 import '../services/movie_service.dart';
+import 'seat_booking_screen.dart';
 
 class MovieDetailScreen extends StatefulWidget {
   final int movieId;
@@ -101,7 +102,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
               else
                 ..._groupByCinema(movie.showtimes).entries.map(
                       (e) => _CinemaShowtimes(
-                          cinemaName: e.key, showtimes: e.value),
+                          cinemaName: e.key,
+                          showtimes: e.value,
+                          movieTitle: movie.title),
                     ),
               if (movie.hasTrailer) ...[
                 const SizedBox(height: 24),
@@ -173,8 +176,13 @@ class _TrailerPlayerState extends State<_TrailerPlayer> {
 class _CinemaShowtimes extends StatelessWidget {
   final String cinemaName;
   final List<Showtime> showtimes;
+  final String movieTitle;
 
-  const _CinemaShowtimes({required this.cinemaName, required this.showtimes});
+  const _CinemaShowtimes({
+    required this.cinemaName,
+    required this.showtimes,
+    required this.movieTitle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -196,10 +204,16 @@ class _CinemaShowtimes extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: showtimes.map((s) {
-                return Chip(
+                return ActionChip(
                   avatar: const Icon(Icons.event_seat, size: 16),
                   label: Text('${s.showTime}  (ว่าง ${s.availableSeats})'),
                   visualDensity: VisualDensity.compact,
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SeatBookingScreen(
+                          showtime: s, movieTitle: movieTitle),
+                    ),
+                  ),
                 );
               }).toList(),
             ),
