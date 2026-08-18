@@ -8,6 +8,7 @@ import 'services/movie_service.dart';
 import 'services/showtime_service.dart';
 import 'services/token_storage.dart';
 import 'state/auth_provider.dart';
+import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
@@ -53,12 +54,7 @@ class CinemaApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Cinema',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorSchemeSeed: const Color(0xFFe94560),
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: const Color(0xFF16161f),
-          useMaterial3: true,
-        ),
+        theme: AppTheme.light,
         home: const _Root(),
       ),
     );

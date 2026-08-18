@@ -6,8 +6,10 @@ import '../models/showtime.dart';
 import '../services/api_client.dart';
 import '../services/booking_service.dart';
 import '../services/showtime_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/empty_state.dart';
 
-/// ใส่ , คั่นหลักพัน โดยไม่พึ่ง package (เช่น 12345 -> 12,345)
+/// ใส่ , คั่นหลักพัน (เช่น 12345 -> 12,345)
 String _baht(num n) {
   final s = n.toStringAsFixed(0);
   final buf = StringBuffer();
@@ -41,8 +43,6 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
   final Set<String> _selected = {};
   Map<String, int> _priceBySeat = {};
 
-  static const _accent = Color(0xFFe94560);
-
   @override
   void initState() {
     super.initState();
@@ -61,7 +61,6 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
       setState(() {
         _map = map;
         _priceBySeat = map.priceBySeat;
-        // เอาที่นั่งที่ถูกจองไปแล้วออกจาก selection (กรณี reload หลังชน)
         _selected.removeWhere((s) => !_priceBySeat.containsKey(s));
         _loading = false;
       });
@@ -74,8 +73,7 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
     }
   }
 
-  int get _total =>
-      _selected.fold(0, (sum, s) => sum + (_priceBySeat[s] ?? 0));
+  int get _total => _selected.fold(0, (sum, s) => sum + (_priceBySeat[s] ?? 0));
 
   void _toggle(String seat) {
     setState(() {
@@ -96,19 +94,18 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
       final result =
           await bookingService.book(widget.showtime.id, _selected.toList());
       if (!mounted) return;
-      // แจ้งเตือนแบบ notify (SnackBar) เด้งขึ้นแล้วหายเอง — ไม่เด้ง modal, ไม่ย้อนหน้า
+      // แจ้งเตือนแบบ notify (SnackBar) — ไม่เด้ง modal, ไม่ย้อนหน้า
       messenger.showSnackBar(SnackBar(
         content: Text(
             'จองสำเร็จ ที่นั่ง ${result.seats.join(', ')} รวม ${_baht(result.totalPrice)} บาท'),
         backgroundColor: Colors.green.shade700,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
       ));
       _selected.clear();
       await _loadSeats(); // อยู่หน้าเดิม + โหลดผังใหม่ → ที่นั่งที่เพิ่งจองเป็นสีเทา
     } on ApiException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
-      if (e.statusCode == 409) _loadSeats(); // ที่นั่งชน → โหลดผังใหม่
+      messenger.showSnackBar(SnackBar(
+          content: Text(e.message), backgroundColor: Colors.red.shade700));
+      if (e.statusCode == 409) _loadSeats();
     } finally {
       if (mounted) setState(() => _booking = false);
     }
@@ -122,10 +119,14 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(widget.movieTitle,
-                style: const TextStyle(fontSize: 16),
+                style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.gold2,
+                    fontWeight: FontWeight.w700),
                 overflow: TextOverflow.ellipsis),
-            Text('${widget.showtime.cinema?.name ?? ''} · ${widget.showtime.showTime}',
-                style: const TextStyle(fontSize: 12, color: Colors.white60)),
+            Text(
+                '${widget.showtime.cinema?.name ?? ''} · ${widget.showtime.showTime}',
+                style: const TextStyle(fontSize: 12, color: Colors.white70)),
           ],
         ),
       ),
@@ -137,34 +138,23 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
   Widget _buildBody() {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off, size: 48, color: Colors.white38),
-            const SizedBox(height: 8),
-            Text(_error!),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: _loadSeats, child: const Text('ลองใหม่')),
-          ],
-        ),
-      );
+      return ErrorState(message: _error!, onRetry: _loadSeats);
     }
 
     final map = _map!;
     return Column(
       children: [
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _screenBar(),
-        // ผังที่นั่งแบบ zoom/pan/scroll ได้
+        // ผังที่นั่งแบบ zoom/pan/scroll ได้ลื่นไหล
         Expanded(
           child: InteractiveViewer(
-            boundaryMargin: const EdgeInsets.all(80),
-            minScale: 0.4,
-            maxScale: 3.0,
+            boundaryMargin: const EdgeInsets.all(120),
+            minScale: 0.5,
+            maxScale: 4.0,
             constrained: false,
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(28),
               child: Column(children: map.rows.map(_buildRow).toList()),
             ),
           ),
@@ -179,19 +169,23 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
     return Column(
       children: [
         Container(
-          width: 220,
-          height: 6,
+          width: 240,
+          height: 8,
           decoration: BoxDecoration(
-            color: Colors.white24,
-            borderRadius: BorderRadius.circular(3),
-            boxShadow: const [
-              BoxShadow(color: Colors.white24, blurRadius: 18, spreadRadius: 1),
+            gradient: const LinearGradient(
+                colors: [AppColors.brand, AppColors.brandDark]),
+            borderRadius: BorderRadius.circular(4),
+            boxShadow: [
+              BoxShadow(
+                  color: AppColors.brand.withValues(alpha: 0.35),
+                  blurRadius: 18,
+                  spreadRadius: 1),
             ],
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         const Text('จอภาพยนตร์',
-            style: TextStyle(fontSize: 11, color: Colors.white38)),
+            style: TextStyle(fontSize: 12, color: AppColors.muted)),
       ],
     );
   }
@@ -200,25 +194,27 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
     final aisle = _map!.aislePosition;
     final children = <Widget>[
       SizedBox(
-        width: 22,
+        width: 24,
         child: Text(row.label,
-            style: const TextStyle(fontSize: 11, color: Colors.white54)),
+            style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.muted,
+                fontWeight: FontWeight.w600)),
       ),
     ];
 
     for (var i = 0; i < row.seats.length; i++) {
       final col = i + 1;
-      // เว้นทางเดิน: โซนจับคู่เว้นทุก 2 ที่, โซนอื่นเว้นกลางแถว
       if (row.pairs) {
-        if (i > 0 && i % 2 == 0) children.add(const SizedBox(width: 14));
+        if (i > 0 && i % 2 == 0) children.add(const SizedBox(width: 16));
       } else if (col == aisle) {
-        children.add(const SizedBox(width: 18));
+        children.add(const SizedBox(width: 22));
       }
       children.add(_buildSeat(row.seats[i], row.color));
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
@@ -233,11 +229,11 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
     Color fg = Colors.white;
     switch (status) {
       case SeatStatus.booked:
-        bg = const Color(0xFF3a3a44);
-        fg = Colors.white24;
+        bg = const Color(0xFFCBC9D6); // เทาอ่อน = จองแล้ว
+        fg = Colors.white;
         break;
       case SeatStatus.selecting:
-        bg = _accent;
+        bg = AppColors.brand; // ม่วงแบรนด์ = กำลังเลือก
         break;
       case SeatStatus.available:
         bg = zoneColor;
@@ -245,40 +241,44 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 3),
       child: GestureDetector(
         onTap: seat.booked ? null : () => _toggle(seat.seat),
         child: Container(
-          width: 26,
-          height: 26,
+          width: 32,
+          height: 32,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: BorderRadius.circular(6),
-            border:
-                selected ? Border.all(color: Colors.white, width: 1.5) : null,
+            borderRadius: BorderRadius.circular(7),
+            border: selected
+                ? Border.all(color: AppColors.gold, width: 2)
+                : null,
           ),
           child: Text(
-            seat.seat.replaceAll(RegExp(r'^[A-Z]+'), ''), // เลขที่นั่ง
-            style: TextStyle(fontSize: 9, color: fg),
+            seat.seat.replaceAll(RegExp(r'^[A-Z]+'), ''),
+            style: TextStyle(
+                fontSize: 11, color: fg, fontWeight: FontWeight.w600),
           ),
         ),
       ),
     );
   }
 
-  /// legend: สถานะ + โซน/ราคา
   Widget _legend(SeatMapData map) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: Colors.black26,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE7E4F2))),
+      ),
       child: Wrap(
-        spacing: 14,
-        runSpacing: 6,
+        spacing: 16,
+        runSpacing: 8,
         children: [
-          _legendDot(const Color(0xFF3a3a44), 'จองแล้ว'),
-          _legendDot(_accent, 'กำลังเลือก'),
+          _legendDot(const Color(0xFFCBC9D6), 'จองแล้ว'),
+          _legendDot(AppColors.brand, 'กำลังเลือก'),
           ...map.zones
               .map((z) => _legendDot(z.color, '${z.zone} ${_baht(z.price)}฿')),
         ],
@@ -289,13 +289,14 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
   Widget _legendDot(Color color, String label) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
       Container(
-        width: 14,
-        height: 14,
+        width: 16,
+        height: 16,
         decoration:
-            BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+            BoxDecoration(color: color, borderRadius: BorderRadius.circular(5)),
       ),
-      const SizedBox(width: 5),
-      Text(label, style: const TextStyle(fontSize: 12)),
+      const SizedBox(width: 6),
+      Text(label,
+          style: const TextStyle(fontSize: 12, color: AppColors.ink)),
     ]);
   }
 
@@ -303,10 +304,10 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
     final count = _selected.length;
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         decoration: const BoxDecoration(
-          color: Color(0xFF1e1e28),
-          border: Border(top: BorderSide(color: Colors.white12)),
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFE7E4F2))),
         ),
         child: Row(
           children: [
@@ -321,12 +322,14 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
                         : 'เลือก $count ที่นั่ง: ${_selected.join(', ')}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, color: Colors.white60),
+                    style: const TextStyle(fontSize: 12, color: AppColors.muted),
                   ),
                   const SizedBox(height: 2),
-                  Text('${_baht(_total)} บาท', // ราคารวมแบบ real-time
+                  Text('${_baht(_total)} บาท',
                       style: const TextStyle(
-                          fontSize: 20, fontWeight: FontWeight.bold)),
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.ink)),
                 ],
               ),
             ),
@@ -337,12 +340,10 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.check),
               label: const Text('ยืนยันการจอง'),
-              style: FilledButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 14)),
             ),
           ],
         ),

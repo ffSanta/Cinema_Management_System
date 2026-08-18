@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../services/api_client.dart';
 import '../state/auth_provider.dart';
+import '../theme/app_theme.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -53,13 +54,15 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.movie_filter,
-                    size: 72, color: Color(0xFFe94560)),
+                const Icon(Icons.local_movies,
+                    size: 72, color: AppColors.brand),
                 const SizedBox(height: 8),
                 const Text('เข้าสู่ระบบ',
                     textAlign: TextAlign.center,
-                    style:
-                        TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                    style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.ink)),
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _email,
