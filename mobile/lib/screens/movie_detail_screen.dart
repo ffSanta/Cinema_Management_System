@@ -5,6 +5,8 @@ import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../models/movie.dart';
 import '../models/showtime.dart';
 import '../services/movie_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/empty_state.dart';
 import 'seat_booking_screen.dart';
 
 class MovieDetailScreen extends StatefulWidget {
@@ -16,115 +18,121 @@ class MovieDetailScreen extends StatefulWidget {
 }
 
 class _MovieDetailScreenState extends State<MovieDetailScreen> {
-  late Future<Movie> _future;
+  Movie? _movie;
+  Object? _error;
 
   @override
   void initState() {
     super.initState();
-    _future = context.read<MovieService>().detail(widget.movieId);
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final m = await context.read<MovieService>().detail(widget.movieId);
+      if (mounted) setState(() { _movie = m; _error = null; });
+    } catch (e) {
+      if (mounted) setState(() => _error = e);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('รายละเอียด')),
-      body: FutureBuilder<Movie>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snap.hasError) {
-            return Center(child: Text('${snap.error}'));
-          }
-          final movie = snap.data!;
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      movie.posterUrl,
-                      width: 130,
-                      height: 195,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 130,
-                        height: 195,
-                        color: const Color(0xFF1a1a2e),
-                        child:
-                            const Icon(Icons.movie, color: Colors.white24),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(movie.title,
-                            style: const TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        Row(children: [
-                          const Icon(Icons.schedule,
-                              size: 16, color: Colors.white54),
-                          const SizedBox(width: 4),
-                          Text('${movie.durationMins} นาที',
-                              style: const TextStyle(color: Colors.white70)),
-                        ]),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              const Text('เรื่องย่อ',
-                  style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 6),
-              Text(movie.synopsis.isEmpty ? '-' : movie.synopsis,
-                  style: const TextStyle(height: 1.5, color: Colors.white70)),
-              const SizedBox(height: 24),
-              const Text('รอบฉาย',
-                  style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              if (movie.showtimes.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Text('ยังไม่มีรอบฉาย',
-                      style: TextStyle(color: Colors.white54)),
-                )
-              else
-                ..._groupByCinema(movie.showtimes).entries.map(
-                      (e) => _CinemaShowtimes(
-                          cinemaName: e.key,
-                          showtimes: e.value,
-                          movieTitle: movie.title),
-                    ),
-              if (movie.hasTrailer) ...[
-                const SizedBox(height: 24),
-                const Text('ตัวอย่างหนัง',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: _TrailerPlayer(videoId: movie.youtubeId!),
-                ),
-              ],
-            ],
-          );
-        },
-      ),
+      body: _buildBody(),
     );
   }
 
-  /// จัดรอบฉายเป็นกลุ่มตามโรง
+  Widget _buildBody() {
+    if (_error != null) {
+      return ErrorState(message: '$_error', onRetry: _load);
+    }
+    if (_movie == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final movie = _movie!;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                movie.posterUrl,
+                width: 130,
+                height: 195,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 130,
+                  height: 195,
+                  color: const Color(0xFF2A2640),
+                  child: const Icon(Icons.movie, color: Colors.white38),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(movie.title,
+                      style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.ink)),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    const Icon(Icons.schedule, size: 16, color: AppColors.muted),
+                    const SizedBox(width: 4),
+                    Text('${movie.durationMins} นาที',
+                        style: const TextStyle(color: AppColors.muted)),
+                  ]),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        _sectionTitle('เรื่องย่อ'),
+        const SizedBox(height: 6),
+        Text(movie.synopsis.isEmpty ? '-' : movie.synopsis,
+            style: const TextStyle(height: 1.6, color: AppColors.ink)),
+        const SizedBox(height: 24),
+        _sectionTitle('รอบฉาย'),
+        const SizedBox(height: 8),
+        if (movie.showtimes.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Text('ยังไม่มีรอบฉาย',
+                style: TextStyle(color: AppColors.muted)),
+          )
+        else
+          ..._groupByCinema(movie.showtimes).entries.map(
+                (e) => _CinemaShowtimes(
+                    cinemaName: e.key,
+                    showtimes: e.value,
+                    movieTitle: movie.title),
+              ),
+        if (movie.hasTrailer) ...[
+          const SizedBox(height: 24),
+          _sectionTitle('ตัวอย่างหนัง'),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: _TrailerPlayer(videoId: movie.youtubeId!),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _sectionTitle(String text) => Text(text,
+      style: const TextStyle(
+          fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.ink));
+
   Map<String, List<Showtime>> _groupByCinema(List<Showtime> list) {
     final map = <String, List<Showtime>>{};
     for (final s in list) {
@@ -136,7 +144,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
 }
 
 /// ตัวเล่นตัวอย่างหนัง YouTube — บน web เรนเดอร์เป็น <iframe> จริง
-/// จัดการ controller เอง (สร้าง/ปิด) เพื่อไม่ให้เล่นค้างหลังออกจากหน้า
 class _TrailerPlayer extends StatefulWidget {
   final String videoId;
   const _TrailerPlayer({required this.videoId});
@@ -153,7 +160,7 @@ class _TrailerPlayerState extends State<_TrailerPlayer> {
     super.initState();
     _controller = YoutubePlayerController.fromVideoId(
       videoId: widget.videoId,
-      autoPlay: false, // ให้ผู้ใช้กดเล่นเอง
+      autoPlay: false,
       params: const YoutubePlayerParams(
         showControls: true,
         showFullscreenButton: true,
@@ -163,7 +170,7 @@ class _TrailerPlayerState extends State<_TrailerPlayer> {
 
   @override
   void dispose() {
-    _controller.close(); // หยุด + ปล่อย resource
+    _controller.close();
     super.dispose();
   }
 
@@ -194,10 +201,12 @@ class _CinemaShowtimes extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              const Icon(Icons.location_on_outlined, size: 18),
+              const Icon(Icons.location_on_outlined,
+                  size: 18, color: AppColors.brand),
               const SizedBox(width: 6),
               Text(cinemaName,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, color: AppColors.ink)),
             ]),
             const SizedBox(height: 10),
             Wrap(
@@ -205,9 +214,11 @@ class _CinemaShowtimes extends StatelessWidget {
               runSpacing: 8,
               children: showtimes.map((s) {
                 return ActionChip(
-                  avatar: const Icon(Icons.event_seat, size: 16),
+                  avatar: const Icon(Icons.event_seat,
+                      size: 16, color: AppColors.brand),
                   label: Text('${s.showTime}  (ว่าง ${s.availableSeats})'),
-                  visualDensity: VisualDensity.compact,
+                  backgroundColor: AppColors.brand050,
+                  side: BorderSide.none,
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => SeatBookingScreen(

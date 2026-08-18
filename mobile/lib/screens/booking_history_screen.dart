@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 import '../models/booking.dart';
 import '../services/api_client.dart';
 import '../services/booking_service.dart';
+import '../theme/app_theme.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/skeletons.dart';
 
 class BookingHistoryScreen extends StatefulWidget {
   const BookingHistoryScreen({super.key});
@@ -15,7 +18,7 @@ class BookingHistoryScreen extends StatefulWidget {
 class BookingHistoryScreenState extends State<BookingHistoryScreen> {
   List<Booking>? _bookings; // null = ยังโหลดไม่เสร็จครั้งแรก
   Object? _error;
-  bool _busy = false; // กำลังยกเลิกอยู่
+  bool _busy = false;
 
   @override
   void initState() {
@@ -23,7 +26,6 @@ class BookingHistoryScreenState extends State<BookingHistoryScreen> {
     _load();
   }
 
-  /// โหลด/รีเฟรชประวัติแล้ว setState ตรง ๆ (rebuild แน่นอน)
   Future<void> _load() async {
     try {
       final data = await context.read<BookingService>().history();
@@ -66,9 +68,9 @@ class BookingHistoryScreenState extends State<BookingHistoryScreen> {
     setState(() => _busy = true);
     try {
       await bookingService.cancel(b.id);
-      await _load(); // โหลดใหม่ให้เห็นสถานะล่าสุด
-      messenger.showSnackBar(
-          const SnackBar(content: Text('ยกเลิกการจองเรียบร้อยแล้ว')));
+      await _load();
+      messenger.showSnackBar(const SnackBar(
+          content: Text('ยกเลิกการจองเรียบร้อยแล้ว')));
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
@@ -111,25 +113,18 @@ class BookingHistoryScreenState extends State<BookingHistoryScreen> {
 
   Widget _buildBody() {
     if (_error != null) {
-      return ListView(children: [
-        const SizedBox(height: 120),
-        Center(child: Text('$_error')),
-      ]);
+      return ErrorState(message: '$_error', onRetry: _load);
     }
     if (_bookings == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const ListCardSkeleton();
     }
     final bookings = _bookings!;
     if (bookings.isEmpty) {
-      return ListView(children: const [
-        SizedBox(height: 140),
-        Icon(Icons.confirmation_number_outlined,
-            size: 48, color: Colors.white30),
-        SizedBox(height: 8),
-        Center(
-            child: Text('ยังไม่มีการจอง',
-                style: TextStyle(color: Colors.white54))),
-      ]);
+      return const EmptyState(
+        icon: Icons.confirmation_number_outlined,
+        title: 'ยังไม่มีการจอง',
+        subtitle: 'เลือกหนังแล้วจองที่นั่งได้เลย',
+      );
     }
     return Stack(
       children: [
@@ -178,17 +173,21 @@ class _BookingCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              width: 58,
+              padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFFe94560).withValues(alpha: 0.15),
+                color: AppColors.brand050,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
                 children: [
-                  const Text('ที่นั่ง', style: TextStyle(fontSize: 10)),
+                  const Text('ที่นั่ง',
+                      style: TextStyle(fontSize: 10, color: AppColors.muted)),
                   Text(booking.seatNumber,
                       style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.brand)),
                 ],
               ),
             ),
@@ -198,16 +197,17 @@ class _BookingCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(s?.movieTitle ?? '-',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, color: AppColors.ink),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
                   Text(s?.cinemaName ?? '-',
-                      style: const TextStyle(
-                          fontSize: 12, color: Colors.white60)),
+                      style:
+                          const TextStyle(fontSize: 12, color: AppColors.muted)),
                   Text(s?.showTime ?? '-',
-                      style: const TextStyle(
-                          fontSize: 12, color: Colors.white60)),
+                      style:
+                          const TextStyle(fontSize: 12, color: AppColors.muted)),
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -216,15 +216,15 @@ class _BookingCard extends StatelessWidget {
                       if (booking.isCancelled)
                         TextButton.icon(
                           onPressed: busy ? null : onRestore,
-                          icon: const Icon(Icons.restore, size: 16),
+                          icon: const Icon(Icons.restore, size: 18),
                           label: const Text('กู้คืน'),
                         )
                       else
                         TextButton.icon(
                           onPressed: busy ? null : onCancel,
                           style: TextButton.styleFrom(
-                              foregroundColor: Colors.redAccent),
-                          icon: const Icon(Icons.cancel_outlined, size: 16),
+                              foregroundColor: Colors.red.shade600),
+                          icon: const Icon(Icons.cancel_outlined, size: 18),
                           label: const Text('ยกเลิก'),
                         ),
                     ],
@@ -240,13 +240,16 @@ class _BookingCard extends StatelessWidget {
 
   Widget _statusChip(bool cancelled) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: cancelled ? Colors.grey.shade700 : Colors.green.shade700,
+        color: cancelled ? const Color(0xFFEDEBF3) : const Color(0xFFE3F5E9),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(cancelled ? 'ยกเลิกแล้ว' : 'จองแล้ว',
-          style: const TextStyle(fontSize: 11)),
+          style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: cancelled ? AppColors.muted : const Color(0xFF1E8E4E))),
     );
   }
 }

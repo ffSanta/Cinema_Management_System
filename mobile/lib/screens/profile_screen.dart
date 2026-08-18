@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import '../state/auth_provider.dart';
+import '../theme/app_theme.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -24,11 +25,13 @@ class ProfileScreen extends StatelessWidget {
                 Center(
                   child: CircleAvatar(
                     radius: 44,
-                    backgroundColor: const Color(0xFFe94560),
+                    backgroundColor: AppColors.brand,
                     child: Text(
                       user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
                       style: const TextStyle(
-                          fontSize: 36, fontWeight: FontWeight.bold),
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
                     ),
                   ),
                 ),
@@ -36,11 +39,13 @@ class ProfileScreen extends StatelessWidget {
                 Center(
                   child: Text(user.name,
                       style: const TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.bold)),
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.ink)),
                 ),
                 Center(
                   child: Text(user.email,
-                      style: const TextStyle(color: Colors.white60)),
+                      style: const TextStyle(color: AppColors.muted)),
                 ),
                 const SizedBox(height: 6),
                 Center(
@@ -178,7 +183,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 24),
               const Text('เปลี่ยนรหัสผ่าน (เว้นว่างถ้าไม่เปลี่ยน)',
-                  style: TextStyle(color: Colors.white60, fontSize: 13)),
+                  style: TextStyle(color: AppColors.muted, fontSize: 13)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _password,

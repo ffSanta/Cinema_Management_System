@@ -13,6 +13,7 @@ dependencies:
   provider: ^6.1.2               # state management
   flutter_secure_storage: ^9.2.2 # เก็บ token อย่างปลอดภัย
   youtube_player_iframe: ^5.2.0  # เล่นตัวอย่างหนัง YouTube (บน web = iframe จริง)
+  shimmer: ^3.0.0                # skeleton loading ระหว่างรอ API
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
