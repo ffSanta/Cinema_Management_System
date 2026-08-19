@@ -70,6 +70,12 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// อัปโหลดรูปโปรไฟล์แล้วอัปเดต user ในแอป
+  Future<void> uploadAvatar(List<int> bytes, String filename) async {
+    final updated = await authService.uploadAvatar(bytes, filename);
+    updateUser(updated);
+  }
+
   void _set(AuthStatus s, User? u) {
     status = s;
     user = u;

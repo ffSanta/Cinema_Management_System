@@ -41,6 +41,8 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
   bool _booking = false;
 
   final Set<String> _selected = {};
+  // ที่นั่งที่เพิ่งจองในหน้านี้ — มาร์คทันทีไม่ต้อง reload ผังใหม่
+  final Set<String> _justBooked = {};
   Map<String, int> _priceBySeat = {};
 
   @override
@@ -100,8 +102,11 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
             'จองสำเร็จ ที่นั่ง ${result.seats.join(', ')} รวม ${_baht(result.totalPrice)} บาท'),
         backgroundColor: Colors.green.shade700,
       ));
-      _selected.clear();
-      await _loadSeats(); // อยู่หน้าเดิม + โหลดผังใหม่ → ที่นั่งที่เพิ่งจองเป็นสีเทา
+      // มาร์คที่นั่งที่จองเป็น "จองแล้ว" ทันที (ไม่ reload ทั้งผัง → ไม่ค้าง)
+      setState(() {
+        _justBooked.addAll(result.seats);
+        _selected.clear();
+      });
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(
           content: Text(e.message), backgroundColor: Colors.red.shade700));
@@ -144,9 +149,8 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
     final map = _map!;
     return Column(
       children: [
-        const SizedBox(height: 16),
-        _screenBar(),
-        // ผังที่นั่งแบบ zoom/pan/scroll ได้ลื่นไหล
+        // ผังที่นั่งแบบ zoom/pan/scroll ได้ลื่นไหล — จอภาพยนตร์อยู่ในผัง
+        // (กึ่งกลางเหนือที่นั่ง เลื่อน/ซูมไปด้วยกัน ไม่ fix ตำแหน่ง)
         Expanded(
           child: InteractiveViewer(
             boundaryMargin: const EdgeInsets.all(120),
@@ -155,7 +159,13 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
             constrained: false,
             child: Padding(
               padding: const EdgeInsets.all(28),
-              child: Column(children: map.rows.map(_buildRow).toList()),
+              child: Column(
+                children: [
+                  _screenBar(_maxRowWidth(map)),
+                  const SizedBox(height: 28),
+                  ...map.rows.map(_buildRow),
+                ],
+              ),
             ),
           ),
         ),
@@ -164,30 +174,59 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
     );
   }
 
-  /// แถบ "จอภาพยนตร์"
-  Widget _screenBar() {
-    return Column(
-      children: [
-        Container(
-          width: 240,
-          height: 8,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-                colors: [AppColors.brand, AppColors.brandDark]),
-            borderRadius: BorderRadius.circular(4),
-            boxShadow: [
-              BoxShadow(
-                  color: AppColors.brand.withValues(alpha: 0.35),
-                  blurRadius: 18,
-                  spreadRadius: 1),
-            ],
-          ),
+  /// แถบ "จอภาพยนตร์" — กว้างครอบเต็มความกว้างของที่นั่ง (สีม่วงแบรนด์)
+  Widget _screenBar(double width) {
+    return Container(
+      width: width,
+      height: 38,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.brand, AppColors.brandDark],
         ),
-        const SizedBox(height: 6),
-        const Text('จอภาพยนตร์',
-            style: TextStyle(fontSize: 12, color: AppColors.muted)),
-      ],
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+              color: AppColors.brand.withValues(alpha: 0.35),
+              blurRadius: 16,
+              spreadRadius: 1,
+              offset: const Offset(0, 3)),
+        ],
+      ),
+      child: const Text('จอภาพยนตร์',
+          style: TextStyle(
+              fontSize: 14,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1)),
     );
+  }
+
+  /// กว้างของ 1 ที่นั่ง = Container 32 + padding แนวนอน 3*2
+  static const double _seatCell = 38;
+
+  double _rowWidth(SeatRow row, int aisle) {
+    double w = 24; // ป้ายชื่อแถว
+    for (var i = 0; i < row.seats.length; i++) {
+      final col = i + 1;
+      if (row.pairs) {
+        if (i > 0 && i % 2 == 0) w += 16; // ช่องว่างระหว่างคู่
+      } else if (col == aisle) {
+        w += 22; // ทางเดินกลาง
+      }
+      w += _seatCell;
+    }
+    return w;
+  }
+
+  /// ความกว้างของผัง = แถวที่กว้างสุด (ให้แถบจอครอบพอดี)
+  double _maxRowWidth(SeatMapData map) {
+    if (map.rows.isEmpty) return 300;
+    return map.rows
+        .map((r) => _rowWidth(r, map.aislePosition))
+        .reduce((a, b) => a > b ? a : b);
   }
 
   Widget _buildRow(SeatRow row) {
@@ -213,15 +252,17 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
       children.add(_buildSeat(row.seats[i], row.color));
     }
 
+    // เว้นช่องกว้างขึ้นเมื่อขึ้นโซนใหม่ (row.zoneStart จาก API)
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.only(top: row.zoneStart ? 24 : 4, bottom: 4),
       child: Row(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
 
   Widget _buildSeat(Seat seat, Color zoneColor) {
+    final booked = seat.booked || _justBooked.contains(seat.seat);
     final selected = _selected.contains(seat.seat);
-    final SeatStatus status = seat.booked
+    final SeatStatus status = booked
         ? SeatStatus.booked
         : (selected ? SeatStatus.selecting : SeatStatus.available);
 
@@ -243,7 +284,7 @@ class _SeatBookingScreenState extends State<SeatBookingScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 3),
       child: GestureDetector(
-        onTap: seat.booked ? null : () => _toggle(seat.seat),
+        onTap: booked ? null : () => _toggle(seat.seat),
         child: Container(
           width: 32,
           height: 32,

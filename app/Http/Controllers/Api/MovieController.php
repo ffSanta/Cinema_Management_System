@@ -16,7 +16,7 @@ class MovieController extends Controller
      */
     public function index(): JsonResponse
     {
-        $movies = Movie::latest()->get()->map(fn (Movie $m) => $this->formatMovie($m));
+        $movies = Movie::latest()->get()->map(fn(Movie $m) => $this->formatMovie($m));
 
         return response()->json(['data' => $movies]);
     }
@@ -51,7 +51,7 @@ class MovieController extends Controller
         return $movie->showtimes()
             ->with('cinema')
             ->whereHas('cinema')
-            ->withCount(['bookings' => fn ($q) => $q->where('status', 'booked')])
+            ->withCount(['bookings' => fn($q) => $q->where('status', 'booked')])
             ->where('show_time', '>=', now())
             ->orderBy('show_time')
             ->get()

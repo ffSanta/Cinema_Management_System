@@ -61,6 +61,26 @@ class ApiClient {
   Future<dynamic> delete(String path, {bool auth = true}) => _send(() async =>
       _http.delete(_uri(path), headers: await _headers(auth: auth)));
 
+  /// อัปโหลดไฟล์แบบ multipart (เช่น รูปโปรไฟล์)
+  Future<dynamic> uploadFile(
+    String path, {
+    required String field,
+    required List<int> bytes,
+    required String filename,
+    bool auth = true,
+  }) =>
+      _send(() async {
+        final req = http.MultipartRequest('POST', _uri(path));
+        req.headers['Accept'] = 'application/json';
+        if (auth) {
+          final token = await tokenStorage.read();
+          if (token != null) req.headers['Authorization'] = 'Bearer $token';
+        }
+        req.files
+            .add(http.MultipartFile.fromBytes(field, bytes, filename: filename));
+        return http.Response.fromStream(await req.send());
+      });
+
   /// ยิง request + แปลงผล + โยน ApiException เมื่อ status >= 400
   Future<dynamic> _send(Future<http.Response> Function() request) async {
     http.Response res;

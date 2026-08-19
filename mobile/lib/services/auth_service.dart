@@ -65,4 +65,11 @@ class AuthService {
     final data = await api.put('/profile', body: body);
     return User.fromJson(data['user'] as Map<String, dynamic>);
   }
+
+  /// อัปโหลดรูปโปรไฟล์ (bytes จาก image_picker)
+  Future<User> uploadAvatar(List<int> bytes, String filename) async {
+    final data = await api.uploadFile('/profile/avatar',
+        field: 'avatar', bytes: bytes, filename: filename);
+    return User.fromJson(data['user'] as Map<String, dynamic>);
+  }
 }

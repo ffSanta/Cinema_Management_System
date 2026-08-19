@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password'])]
@@ -29,5 +30,15 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * URL รูปโปรไฟล์ (คืน null ถ้าไม่มี) — เป็น /storage/... ให้ client เติม host เอง
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->avatar && Storage::disk('public')->exists($this->avatar)
+            ? Storage::url($this->avatar)
+            : null;
     }
 }

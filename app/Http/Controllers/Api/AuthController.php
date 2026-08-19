@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
@@ -133,6 +134,36 @@ class AuthController extends Controller
     }
 
     /**
+     * POST /api/profile/avatar — อัปโหลด/เปลี่ยนรูปโปรไฟล์ (multipart)
+     */
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ], [
+            'avatar.required' => 'กรุณาเลือกรูป',
+            'avatar.image' => 'ไฟล์ต้องเป็นรูปภาพเท่านั้น',
+            'avatar.mimes' => 'รองรับเฉพาะ jpg, png, webp',
+            'avatar.max' => 'ขนาดรูปต้องไม่เกิน 2 MB',
+        ]);
+
+        $user = $request->user();
+
+        // ลบรูปเก่าทิ้งก่อน (ถ้ามี)
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        $user->avatar = $request->file('avatar')->store('avatars', 'public');
+        $user->save();
+
+        return response()->json([
+            'message' => 'อัปเดตรูปโปรไฟล์เรียบร้อยแล้ว',
+            'user' => $this->userPayload($user),
+        ]);
+    }
+
+    /**
      * รูปแบบข้อมูล user ที่ส่งกลับ (ไม่รวม password)
      */
     private function userPayload(User $user): array
@@ -142,6 +173,7 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role,
+            'avatar_url' => $user->avatar_url,
         ];
     }
 }

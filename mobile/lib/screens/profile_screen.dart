@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../services/api_client.dart';
@@ -22,19 +23,7 @@ class ProfileScreen extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               children: [
                 const SizedBox(height: 8),
-                Center(
-                  child: CircleAvatar(
-                    radius: 44,
-                    backgroundColor: AppColors.brand,
-                    child: Text(
-                      user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                      style: const TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white),
-                    ),
-                  ),
-                ),
+                const Center(child: _ProfileAvatar()),
                 const SizedBox(height: 12),
                 Center(
                   child: Text(user.name,
@@ -46,13 +35,6 @@ class ProfileScreen extends StatelessWidget {
                 Center(
                   child: Text(user.email,
                       style: const TextStyle(color: AppColors.muted)),
-                ),
-                const SizedBox(height: 6),
-                Center(
-                  child: Chip(
-                    label: Text(user.role),
-                    visualDensity: VisualDensity.compact,
-                  ),
                 ),
                 const SizedBox(height: 28),
                 FilledButton.icon(
@@ -92,6 +74,102 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
     if (ok == true) await auth.logout();
+  }
+}
+
+/// รูปโปรไฟล์ + ปุ่มกล้องเปลี่ยนรูป (เลือกจากเครื่อง → อัปโหลดขึ้น server)
+class _ProfileAvatar extends StatefulWidget {
+  const _ProfileAvatar();
+
+  @override
+  State<_ProfileAvatar> createState() => _ProfileAvatarState();
+}
+
+class _ProfileAvatarState extends State<_ProfileAvatar> {
+  bool _uploading = false;
+
+  Future<void> _pick() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final auth = context.read<AuthProvider>();
+
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      imageQuality: 85,
+    );
+    if (file == null) return;
+
+    setState(() => _uploading = true);
+    try {
+      final bytes = await file.readAsBytes();
+      await auth.uploadAvatar(bytes, file.name);
+      messenger.showSnackBar(
+          const SnackBar(content: Text('อัปเดตรูปโปรไฟล์เรียบร้อยแล้ว')));
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().user;
+    final url = user?.avatarUrl;
+    final initial = Text(
+      (user?.name.isNotEmpty ?? false) ? user!.name[0].toUpperCase() : '?',
+      style: const TextStyle(
+          fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white),
+    );
+
+    return Stack(
+      children: [
+        // รูปพอดีกรอบวงกลม 96px — cover ครอปกลาง ไม่ล้นกรอบ
+        ClipOval(
+          child: Container(
+            width: 96,
+            height: 96,
+            color: AppColors.brand,
+            alignment: Alignment.center,
+            child: url != null
+                ? Image.network(url,
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => initial)
+                : initial,
+          ),
+        ),
+        if (_uploading)
+          Positioned.fill(
+            child: ClipOval(
+              child: Container(
+                color: Colors.black38,
+                child: const Center(
+                    child: CircularProgressIndicator(color: Colors.white)),
+              ),
+            ),
+          ),
+        // ปุ่มกล้อง
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: Material(
+            color: AppColors.gold,
+            shape: const CircleBorder(),
+            elevation: 2,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: _uploading ? null : _pick,
+              child: const Padding(
+                padding: EdgeInsets.all(7),
+                child: Icon(Icons.photo_camera, size: 18, color: Colors.white),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 

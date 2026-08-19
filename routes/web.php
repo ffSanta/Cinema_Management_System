@@ -8,12 +8,24 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ShowtimeController;
 use App\Models\Movie;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 Route::get('/', function () {
     $movies = Movie::latest()->get();
 
     return view('dashboard', compact('movies'));
 });
+
+// เสิร์ฟไฟล์ใน storage/app/public ผ่าน Laravel พร้อมแนบ CORS header
+// (php artisan serve เสิร์ฟ /storage/* แบบ static ไม่ผ่าน middleware จึงไม่มี CORS
+//  → Flutter web (CanvasKit) โหลดรูปข้าม origin ไม่ได้ เลยต้องมี route นี้)
+Route::get('/media/{path}', function (string $path) {
+    abort_unless(Storage::disk('public')->exists($path), 404);
+
+    return Storage::disk('public')->response($path, null, [
+        'Access-Control-Allow-Origin' => '*',
+    ]);
+})->where('path', '.*')->name('media');
 
 // ===== ส่วนจัดการ (เฉพาะ admin) =====
 Route::middleware(['auth', 'admin'])->group(function () {

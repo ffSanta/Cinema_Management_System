@@ -1,3 +1,4 @@
+import '../config/api_config.dart';
 import 'showtime.dart';
 
 class Movie {
@@ -28,7 +29,7 @@ class Movie {
         title: json['title'] as String? ?? '',
         durationMins: json['duration_mins'] as int? ?? 0,
         synopsis: json['synopsis'] as String? ?? '',
-        posterUrl: json['poster_url'] as String? ?? '',
+        posterUrl: ApiConfig.resolveUrl(json['poster_url'] as String? ?? ''),
         youtubeId: json['youtube_id'] as String?,
         showtimes: (json['showtimes'] as List<dynamic>?)
                 ?.map((e) => Showtime.fromJson(e as Map<String, dynamic>))
