@@ -7,6 +7,7 @@ import '../services/booking_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/skeletons.dart';
+import 'ticket_screen.dart';
 
 class BookingHistoryScreen extends StatefulWidget {
   const BookingHistoryScreen({super.key});
@@ -209,24 +210,44 @@ class _BookingCard extends StatelessWidget {
                       style:
                           const TextStyle(fontSize: 12, color: AppColors.muted)),
                   const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _statusChip(booking.isCancelled),
+                  ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      _statusChip(booking.isCancelled),
-                      const Spacer(),
-                      if (booking.isCancelled)
-                        TextButton.icon(
-                          onPressed: busy ? null : onRestore,
-                          icon: const Icon(Icons.restore, size: 18),
-                          label: const Text('กู้คืน'),
-                        )
-                      else
-                        TextButton.icon(
-                          onPressed: busy ? null : onCancel,
-                          style: TextButton.styleFrom(
-                              foregroundColor: Colors.red.shade600),
-                          icon: const Icon(Icons.cancel_outlined, size: 18),
-                          label: const Text('ยกเลิก'),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          // ยกเลิกแล้วดูตั๋วไม่ได้ (ปุ่ม disabled)
+                          onPressed: booking.isCancelled
+                              ? null
+                              : () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                            TicketScreen(booking: booking)),
+                                  ),
+                          icon: const Icon(Icons.qr_code_2, size: 18),
+                          label: const Text('ดูตั๋ว'),
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: booking.isCancelled
+                            ? OutlinedButton.icon(
+                                onPressed: busy ? null : onRestore,
+                                icon: const Icon(Icons.restore, size: 18),
+                                label: const Text('กู้คืน'),
+                              )
+                            : OutlinedButton.icon(
+                                onPressed: busy ? null : onCancel,
+                                style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.red.shade600),
+                                icon: const Icon(Icons.cancel_outlined,
+                                    size: 18),
+                                label: const Text('ยกเลิก'),
+                              ),
+                      ),
                     ],
                   ),
                 ],

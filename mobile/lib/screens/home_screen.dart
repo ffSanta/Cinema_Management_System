@@ -24,6 +24,8 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   void _onSelect(int i) {
+    // เคลียร์ focus กันปุ่มในหน้าใหม่ถูก highlight อัตโนมัติ (Flutter web)
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _index = i);
     // เข้าแท็บ "การจอง" → โหลดประวัติล่าสุดเสมอ (เห็นการจองที่เพิ่งทำ)
     if (i == 1) _bookingKey.currentState?.reload();

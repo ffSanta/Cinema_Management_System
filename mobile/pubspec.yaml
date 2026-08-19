@@ -15,6 +15,7 @@ dependencies:
   youtube_player_iframe: ^5.2.0  # เล่นตัวอย่างหนัง YouTube (บน web = iframe จริง)
   shimmer: ^3.0.0                # skeleton loading ระหว่างรอ API
   image_picker: ^1.1.2           # เลือกรูปโปรไฟล์อัปโหลด
+  qr_flutter: ^4.1.0             # สร้าง QR code สำหรับ E-Ticket
   cupertino_icons: ^1.0.8
 
 dev_dependencies:

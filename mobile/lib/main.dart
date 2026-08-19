@@ -55,10 +55,19 @@ class CinemaApp extends StatelessWidget {
         title: 'Cinema',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        scrollBehavior: _NoGlowScrollBehavior(),
         home: const _Root(),
       ),
     );
   }
+}
+
+/// เอา overscroll glow (แสงฟ้า/ม่วงตอนลากเกินขอบ list) ออกทั้งแอป
+class _NoGlowScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Widget buildOverscrollIndicator(
+          BuildContext context, Widget child, ScrollableDetails details) =>
+      child;
 }
 
 /// เลือกหน้าตามสถานะล็อกอิน

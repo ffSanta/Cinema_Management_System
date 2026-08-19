@@ -128,7 +128,7 @@ class MovieController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'duration_mins' => ['required', 'integer', 'min:1', 'max:1000'],
-            'synopsis' => ['required', 'string', 'max:100'],
+            'synopsis' => ['required', 'string'],
             // ลิงก์ตัวอย่างหนัง YouTube — ไม่บังคับ แต่ถ้ากรอกต้องเป็นลิงก์ YouTube ที่ถูกต้อง
             'trailer_url' => ['nullable', 'string', 'max:255', 'regex:~^https?://(?:www\.)?(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/)|youtu\.be/)[A-Za-z0-9_-]{11}~i'],
             'poster_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
@@ -139,7 +139,7 @@ class MovieController extends Controller
             'duration_mins.integer' => 'ความยาวต้องเป็นตัวเลข',
             'duration_mins.min' => 'ความยาวต้องมากกว่า 0 นาที',
             'synopsis.required' => 'กรุณากรอกเรื่องย่อ',
-            'synopsis.max' => 'เรื่องย่อต้องไม่เกิน 60 ตัวอักษร',
+            // 'synopsis.max' => 'เรื่องย่อต้องไม่เกิน 60 ตัวอักษร',
             'trailer_url.regex' => 'กรุณากรอกลิงก์ YouTube ที่ถูกต้อง',
             'trailer_url.max' => 'ลิงก์ยาวเกินไป',
             'poster_image.image' => 'ไฟล์ต้องเป็นรูปภาพเท่านั้น',
